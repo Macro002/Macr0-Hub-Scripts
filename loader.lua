@@ -1,0 +1,260 @@
+-- Macr0 Hub Loader
+-- Secure key validation system
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local API_URL = "https://keyauth.macr0.dev/api/validate"
+
+-- Configuration
+local HUB_FOLDER = "Macr0_Hub"
+local KEY_FILE = HUB_FOLDER .. "/key.txt"
+
+-- Game scripts mapping
+local GAME_SCRIPTS = {
+    [1547610457] = "https://raw.githubusercontent.com/Macro002/Macr0-Hub-Scripts/main/freedraw.lua", -- FreeDraw game
+}
+
+-- Create hub folder if it doesn't exist
+if not isfolder(HUB_FOLDER) then
+    makefolder(HUB_FOLDER)
+end
+
+-- Function to get saved key
+local function getSavedKey()
+    if isfile(KEY_FILE) then
+        return readfile(KEY_FILE)
+    end
+    return nil
+end
+
+-- Function to save key
+local function saveKey(key)
+    writefile(KEY_FILE, key)
+end
+
+-- Function to validate key with API
+local function validateKey(key)
+    local success, result = pcall(function()
+        local response = syn.request({
+            Url = API_URL,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode({
+                key = key,
+                hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+            })
+        })
+
+        if response.StatusCode == 200 then
+            local data = HttpService:JSONDecode(response.Body)
+            return data.valid == true, data
+        else
+            return false, {message = "Server returned status " .. response.StatusCode}
+        end
+    end)
+
+    if not success then
+        return false, {message = "Failed to connect to API: " .. tostring(result)}
+    end
+
+    return result
+end
+
+-- Function to load game script
+local function loadGameScript()
+    local gameId = game.PlaceId
+    local scriptUrl = GAME_SCRIPTS[gameId]
+
+    if not scriptUrl then
+        return false, "This game is not supported yet!"
+    end
+
+    local success, result = pcall(function()
+        return game:HttpGet(scriptUrl)
+    end)
+
+    if not success then
+        return false, "Failed to download game script: " .. tostring(result)
+    end
+
+    -- Execute the script
+    local execSuccess, execError = pcall(function()
+        loadstring(result)()
+    end)
+
+    if not execSuccess then
+        return false, "Failed to execute game script: " .. tostring(execError)
+    end
+
+    return true, "Script loaded successfully!"
+end
+
+-- Load WindUI
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Check for saved key first
+local savedKey = getSavedKey()
+if savedKey and savedKey ~= "" then
+    -- Try to validate saved key
+    local valid, response = validateKey(savedKey)
+
+    if valid then
+        -- Key is valid, load the script directly
+        local loadSuccess, loadMessage = loadGameScript()
+
+        if loadSuccess then
+            WindUI:Notify({
+                Title = "Macr0 Hub",
+                Content = "Welcome back! Loading script...",
+                Duration = 3,
+                Icon = "check-circle",
+            })
+            return
+        else
+            WindUI:Notify({
+                Title = "Macr0 Hub",
+                Content = loadMessage,
+                Duration = 5,
+                Icon = "alert-triangle",
+            })
+        end
+    else
+        -- Saved key is invalid, delete it
+        delfile(KEY_FILE)
+        WindUI:Notify({
+            Title = "Macr0 Hub",
+            Content = "Saved key expired. Please enter a new key.",
+            Duration = 4,
+            Icon = "alert-triangle",
+        })
+    end
+end
+
+-- Create loader window
+local Window = WindUI:CreateWindow({
+    Title = "Macr0 Hub",
+    Author = "Key Verification",
+    Size = UDim2.fromOffset(450, 300),
+    SideBarWidth = 0,
+    Folder = "Macr0Hub_Loader",
+    NewElements = true,
+})
+
+local MainTab = Window:Tab({
+    Title = "Authentication",
+    Icon = "key",
+})
+
+-- Variables
+local enteredKey = ""
+local saveKeyEnabled = true
+
+-- Info
+MainTab:Paragraph({
+    Title = "Welcome to Macr0 Hub",
+    Desc = "Enter your license key to continue.\nGame: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+})
+
+-- Key input
+MainTab:Input({
+    Title = "License Key",
+    Placeholder = "Enter your key here...",
+    Callback = function(value)
+        enteredKey = value
+    end
+})
+
+-- Save key checkbox
+MainTab:Toggle({
+    Title = "Save Key",
+    Desc = "Remember this key for next time",
+    Value = true,
+    Callback = function(value)
+        saveKeyEnabled = value
+    end
+})
+
+-- Status label
+local statusLabel = MainTab:Paragraph({
+    Title = "Status",
+    Desc = "Ready to validate"
+})
+
+-- Validate button
+MainTab:Button({
+    Title = "Validate Key",
+    Callback = function()
+        if enteredKey == "" then
+            WindUI:Notify({
+                Title = "Macr0 Hub",
+                Content = "Please enter a license key!",
+                Duration = 3,
+                Icon = "alert-triangle",
+            })
+            return
+        end
+
+        statusLabel:SetDesc("⏳ Validating key...")
+
+        local valid, response = validateKey(enteredKey)
+
+        if valid then
+            statusLabel:SetDesc("✅ Key valid! Loading script...")
+
+            -- Save key if enabled
+            if saveKeyEnabled then
+                saveKey(enteredKey)
+            end
+
+            WindUI:Notify({
+                Title = "Macr0 Hub",
+                Content = "Key validated! Loading script...",
+                Duration = 3,
+                Icon = "check-circle",
+            })
+
+            -- Close loader window
+            task.wait(1)
+            Window:Destroy()
+
+            -- Load game script
+            local loadSuccess, loadMessage = loadGameScript()
+
+            if not loadSuccess then
+                WindUI:Notify({
+                    Title = "Macr0 Hub",
+                    Content = loadMessage,
+                    Duration = 5,
+                    Icon = "x",
+                })
+            end
+        else
+            statusLabel:SetDesc("❌ " .. (response.message or "Invalid key"))
+            WindUI:Notify({
+                Title = "Macr0 Hub",
+                Content = response.message or "Invalid license key!",
+                Duration = 4,
+                Icon = "x",
+            })
+        end
+    end
+})
+
+-- Info section
+MainTab:Paragraph({
+    Title = "Need a Key?",
+    Desc = "Purchase a license at:\nhttps://keyauth.macr0.dev"
+})
+
+MainTab:Paragraph({
+    Title = "Supported Games",
+    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
+})
+
+Window:SetToggleKey(Enum.KeyCode.RightControl)
+Window:SelectTab(1)
+
+print("[Macr0 Hub] Loader initialized")
