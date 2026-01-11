@@ -131,6 +131,11 @@ local function loadGameScript()
         return false, "Failed to download game script: " .. tostring(result)
     end
 
+    -- Set a global flag to indicate the loader has validated the key
+    -- This prevents the game script from re-checking
+    _G.Macr0HubValidated = true
+    _G.Macr0HubHWID = game:GetService("RbxAnalyticsService"):GetClientId()
+
     -- Execute the script
     local execSuccess, execError = pcall(function()
         loadstring(result)()

@@ -34,15 +34,15 @@ if not isfolder(HUB_FOLDER) then
     makefolder(HUB_FOLDER)
 end
 
--- Function to validate stored key
-local function validateStoredKey()
-    if not isfile(KEY_FILE) then
-        return false, "No key found"
-    end
-
-    local key = readfile(KEY_FILE)
-    if key == "" then
-        return false, "Empty key"
+-- Function to validate access (checks loader flag or saved key)
+local function validateAccess()
+    -- Check if loader already validated (session flag)
+    if _G.Macr0HubValidated then
+        local currentHWID = game:GetService("RbxAnalyticsService"):GetClientId()
+        if _G.Macr0HubHWID == currentHWID then
+            print("[FreeDraw] Validated via loader session")
+            return true, "Session valid"
+        end
     end
 
     -- Try multiple HTTP request methods (same as loader)
@@ -67,32 +67,45 @@ local function validateStoredKey()
         return false, "HTTP request not supported"
     end
 
-    -- Validate with API
-    local success, valid = pcall(function()
-        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-        local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
+    -- Check if there's a saved key to validate
+    if isfile(KEY_FILE) then
+        local key = readfile(KEY_FILE)
+        if key ~= "" then
+            local success, valid = pcall(function()
+                local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+                local robloxId = tostring(game:GetService("Players").LocalPlayer.UserId)
+                local robloxUsername = game:GetService("Players").LocalPlayer.Name
+                local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
 
-        local response = requestFunc({
-            Url = url,
-            Method = "GET"
-        })
+                local response = requestFunc({
+                    Url = url,
+                    Method = "GET"
+                })
 
-        if response.StatusCode == 200 then
-            local data = game:GetService("HttpService"):JSONDecode(response.Body)
-            return data.valid == true
+                if response.StatusCode == 200 then
+                    local data = game:GetService("HttpService"):JSONDecode(response.Body)
+                    return data.valid == true
+                end
+                return false
+            end)
+
+            if success and valid then
+                print("[FreeDraw] Validated with saved key")
+                return true, "Key valid"
+            else
+                -- Saved key is invalid, delete it
+                print("[FreeDraw] Saved key invalid, deleting...")
+                delfile(KEY_FILE)
+            end
         end
-        return false
-    end)
-
-    if not success or not valid then
-        return false, "Invalid or expired key"
     end
 
-    return true, "Key valid"
+    -- No valid session or saved key
+    return false, "Authentication required"
 end
 
--- Check if key is valid before proceeding
-local isValid, message = validateStoredKey()
+-- Check if access is valid before proceeding
+local isValid, message = validateAccess()
 if not isValid then
     -- Load the loader instead
     warn("[FreeDraw] " .. message .. " - Loading Macr0 Hub Loader...")
