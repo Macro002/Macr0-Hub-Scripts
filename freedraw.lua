@@ -27,7 +27,7 @@ local imageRotation = 0
 -- Key validation check (if run directly without loader)
 local HUB_FOLDER = "Macr0_Hub"
 local KEY_FILE = HUB_FOLDER .. "/key.txt"
-local API_URL = "https://keyauth.macr0.dev/api/validate"
+local API_URL = "https://keyauth.macr0.dev/api/v1/validate"
 
 -- Create hub folder
 if not isfolder(HUB_FOLDER) then
@@ -47,16 +47,12 @@ local function validateStoredKey()
 
     -- Validate with API
     local success, result = pcall(function()
+        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
+
         local response = syn.request({
-            Url = API_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = game:GetService("HttpService"):JSONEncode({
-                key = key,
-                hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-            })
+            Url = url,
+            Method = "GET"
         })
 
         if response.StatusCode == 200 then
