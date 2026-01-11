@@ -36,7 +36,14 @@ end
 -- Function to validate key with API
 local function validateKey(key)
     local success, result = pcall(function()
-        local response = syn.request({
+        -- Try different HTTP request methods (executor compatibility)
+        local request = syn and syn.request or http_request or request or HttpPost or syn.http.request
+
+        if not request then
+            return false, {message = "HTTP request not supported by executor"}
+        end
+
+        local response = request({
             Url = API_URL,
             Method = "POST",
             Headers = {
@@ -156,6 +163,20 @@ local saveKeyEnabled = true
 MainTab:Paragraph({
     Title = "Welcome to Macr0 Hub",
     Desc = "Enter your license key to continue.\nGame: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+})
+
+-- Discord support button
+MainTab:Button({
+    Title = "Join Discord for Support",
+    Callback = function()
+        setclipboard("https://discord.gg/ssKH9aDPXK")
+        WindUI:Notify({
+            Title = "Macr0 Hub",
+            Content = "Discord invite copied to clipboard!",
+            Duration = 3,
+            Icon = "clipboard",
+        })
+    end
 })
 
 -- Key input
