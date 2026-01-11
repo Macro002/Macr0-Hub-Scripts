@@ -35,15 +35,41 @@ end
 
 -- Function to validate key with API
 local function validateKey(key)
-    local success, result = pcall(function()
-        -- Try different HTTP request methods (executor compatibility)
-        local request = syn and syn.request or http_request or request or HttpPost or syn.http.request
+    print("[Macr0 Hub] Starting key validation...")
+    print("[Macr0 Hub] Key:", key)
+    print("[Macr0 Hub] HWID:", game:GetService("RbxAnalyticsService"):GetClientId())
 
-        if not request then
-            return false, {message = "HTTP request not supported by executor"}
+    -- Try multiple HTTP request methods
+    local requestMethods = {
+        {name = "syn.request", func = function() return syn and syn.request end},
+        {name = "http.request", func = function() return http and http.request end},
+        {name = "http_request", func = function() return http_request end},
+        {name = "request", func = function() return request end},
+        {name = "syn.http.request", func = function() return syn and syn.http and syn.http.request end},
+    }
+
+    local requestFunc = nil
+    local methodName = nil
+
+    for _, method in ipairs(requestMethods) do
+        local func = method.func()
+        if func then
+            requestFunc = func
+            methodName = method.name
+            print("[Macr0 Hub] Found HTTP method:", methodName)
+            break
         end
+    end
 
-        local response = request({
+    if not requestFunc then
+        print("[Macr0 Hub] ERROR: No HTTP request method available!")
+        return false, {message = "HTTP request not supported by executor"}
+    end
+
+    local success, result = pcall(function()
+        print("[Macr0 Hub] Sending request to:", API_URL)
+
+        local response = requestFunc({
             Url = API_URL,
             Method = "POST",
             Headers = {
@@ -55,18 +81,25 @@ local function validateKey(key)
             })
         })
 
+        print("[Macr0 Hub] Response Status:", response.StatusCode)
+        print("[Macr0 Hub] Response Body:", response.Body)
+
         if response.StatusCode == 200 then
             local data = HttpService:JSONDecode(response.Body)
+            print("[Macr0 Hub] Parsed response:", HttpService:JSONEncode(data))
             return data.valid == true, data
         else
+            print("[Macr0 Hub] Server error:", response.StatusCode)
             return false, {message = "Server returned status " .. response.StatusCode}
         end
     end)
 
     if not success then
+        print("[Macr0 Hub] ERROR:", tostring(result))
         return false, {message = "Failed to connect to API: " .. tostring(result)}
     end
 
+    print("[Macr0 Hub] Validation complete. Valid:", result)
     return result
 end
 
@@ -101,6 +134,10 @@ end
 
 -- Load WindUI
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- Enable normal cursor when UI is open
+local UserInputService = game:GetService("UserInputService")
+UserInputService.MouseIconEnabled = true
 
 -- Check for saved key first
 local savedKey = getSavedKey()
@@ -144,7 +181,7 @@ end
 local Window = WindUI:CreateWindow({
     Title = "Macr0 Hub",
     Author = "Key Verification",
-    Size = UDim2.fromOffset(450, 300),
+    Size = UDim2.fromOffset(550, 450),
     SideBarWidth = 0,
     Folder = "Macr0Hub_Loader",
     NewElements = true,
@@ -159,24 +196,16 @@ local MainTab = Window:Tab({
 local enteredKey = ""
 local saveKeyEnabled = true
 
--- Info
+-- Welcome message
 MainTab:Paragraph({
     Title = "Welcome to Macr0 Hub",
     Desc = "Enter your license key to continue.\nGame: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
 })
 
--- Discord support button
-MainTab:Button({
-    Title = "Join Discord for Support",
-    Callback = function()
-        setclipboard("https://discord.gg/ssKH9aDPXK")
-        WindUI:Notify({
-            Title = "Macr0 Hub",
-            Content = "Discord invite copied to clipboard!",
-            Duration = 3,
-            Icon = "clipboard",
-        })
-    end
+-- Status label
+local statusLabel = MainTab:Paragraph({
+    Title = "Status",
+    Desc = "Ready to validate"
 })
 
 -- Key input
@@ -198,10 +227,30 @@ MainTab:Toggle({
     end
 })
 
--- Status label
-local statusLabel = MainTab:Paragraph({
-    Title = "Status",
-    Desc = "Ready to validate"
+-- Need a key section
+MainTab:Paragraph({
+    Title = "Need a Key?",
+    Desc = "Purchase a license at:\nhttps://keyauth.macr0.dev\n\nJoin our Discord for support:\nhttps://discord.gg/ssKH9aDPXK"
+})
+
+-- Copy Discord invite button
+MainTab:Button({
+    Title = "Copy Discord Invite",
+    Callback = function()
+        setclipboard("https://discord.gg/ssKH9aDPXK")
+        WindUI:Notify({
+            Title = "Macr0 Hub",
+            Content = "Discord invite copied to clipboard!",
+            Duration = 3,
+            Icon = "clipboard",
+        })
+    end
+})
+
+-- Supported games
+MainTab:Paragraph({
+    Title = "Supported Games",
+    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
 })
 
 -- Validate button
@@ -219,6 +268,7 @@ MainTab:Button({
         end
 
         statusLabel:SetDesc("⏳ Validating key...")
+        print("[Macr0 Hub] User clicked Validate Key button")
 
         local valid, response = validateKey(enteredKey)
 
@@ -228,6 +278,7 @@ MainTab:Button({
             -- Save key if enabled
             if saveKeyEnabled then
                 saveKey(enteredKey)
+                print("[Macr0 Hub] Key saved to file")
             end
 
             WindUI:Notify({
@@ -262,17 +313,6 @@ MainTab:Button({
             })
         end
     end
-})
-
--- Info section
-MainTab:Paragraph({
-    Title = "Need a Key?",
-    Desc = "Purchase a license at:\nhttps://keyauth.macr0.dev"
-})
-
-MainTab:Paragraph({
-    Title = "Supported Games",
-    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
 })
 
 Window:SetToggleKey(Enum.KeyCode.RightControl)
