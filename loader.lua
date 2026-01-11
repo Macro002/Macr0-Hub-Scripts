@@ -4,7 +4,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
-local API_URL = "https://keyauth.macr0.dev/api/validate"
+local API_URL = "https://keyauth.macr0.dev/api/v1/validate"
 
 -- Configuration
 local HUB_FOLDER = "Macr0_Hub"
@@ -66,19 +66,15 @@ local function validateKey(key)
         return false, {message = "HTTP request not supported by executor"}
     end
 
+    local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+    local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
+
     local success, result = pcall(function()
-        print("[Macr0 Hub] Sending request to:", API_URL)
+        print("[Macr0 Hub] Sending request to:", url)
 
         local response = requestFunc({
-            Url = API_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode({
-                key = key,
-                hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-            })
+            Url = url,
+            Method = "GET"
         })
 
         print("[Macr0 Hub] Response Status:", response.StatusCode)
@@ -217,43 +213,7 @@ MainTab:Input({
     end
 })
 
--- Save key checkbox
-MainTab:Toggle({
-    Title = "Save Key",
-    Desc = "Remember this key for next time",
-    Value = true,
-    Callback = function(value)
-        saveKeyEnabled = value
-    end
-})
-
--- Need a key section
-MainTab:Paragraph({
-    Title = "Need a Key?",
-    Desc = "Purchase a license at:\nhttps://keyauth.macr0.dev\n\nJoin our Discord for support:\nhttps://discord.gg/ssKH9aDPXK"
-})
-
--- Copy Discord invite button
-MainTab:Button({
-    Title = "Copy Discord Invite",
-    Callback = function()
-        setclipboard("https://discord.gg/ssKH9aDPXK")
-        WindUI:Notify({
-            Title = "Macr0 Hub",
-            Content = "Discord invite copied to clipboard!",
-            Duration = 3,
-            Icon = "clipboard",
-        })
-    end
-})
-
--- Supported games
-MainTab:Paragraph({
-    Title = "Supported Games",
-    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
-})
-
--- Validate button
+-- Validate button (right after key input)
 MainTab:Button({
     Title = "Validate Key",
     Callback = function()
@@ -313,6 +273,42 @@ MainTab:Button({
             })
         end
     end
+})
+
+-- Save key checkbox
+MainTab:Toggle({
+    Title = "Save Key",
+    Desc = "Remember this key for next time",
+    Value = true,
+    Callback = function(value)
+        saveKeyEnabled = value
+    end
+})
+
+-- Need a key section
+MainTab:Paragraph({
+    Title = "Need a Key?",
+    Desc = "Join our Discord for support:\nhttps://discord.gg/ssKH9aDPXK"
+})
+
+-- Copy Discord invite button
+MainTab:Button({
+    Title = "Copy Discord Invite",
+    Callback = function()
+        setclipboard("https://discord.gg/ssKH9aDPXK")
+        WindUI:Notify({
+            Title = "Macr0 Hub",
+            Content = "Discord invite copied to clipboard!",
+            Duration = 3,
+            Icon = "clipboard",
+        })
+    end
+})
+
+-- Supported games
+MainTab:Paragraph({
+    Title = "Supported Games",
+    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
 })
 
 Window:SetToggleKey(Enum.KeyCode.RightControl)
