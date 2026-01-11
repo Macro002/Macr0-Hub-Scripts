@@ -67,7 +67,11 @@ local function validateKey(key)
     end
 
     local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-    local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
+    local robloxId = tostring(player.UserId)
+    local robloxUsername = player.Name
+
+    -- Build URL with all parameters
+    local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. HttpService:UrlEncode(robloxUsername)
 
     local success, valid, data = pcall(function()
         print("[Macr0 Hub] Sending request to:", url)
@@ -84,9 +88,20 @@ local function validateKey(key)
             local responseData = HttpService:JSONDecode(response.Body)
             print("[Macr0 Hub] Parsed response:", HttpService:JSONEncode(responseData))
             return responseData.valid == true, responseData
+        elseif response.StatusCode == 404 then
+            print("[Macr0 Hub] Key not found")
+            return false, {message = "Invalid license key"}
+        elseif response.StatusCode == 403 then
+            -- Parse the body to get specific reason (banned, expired, HWID mismatch)
+            local responseData = HttpService:JSONDecode(response.Body)
+            print("[Macr0 Hub] Forbidden:", responseData.reason)
+            return false, {message = responseData.reason or "Access denied"}
+        elseif response.StatusCode == 400 then
+            print("[Macr0 Hub] Bad request")
+            return false, {message = "Invalid request parameters"}
         else
             print("[Macr0 Hub] Server error:", response.StatusCode)
-            return false, {message = "Server returned status " .. response.StatusCode}
+            return false, {message = "Server error: " .. response.StatusCode}
         end
     end)
 
@@ -138,10 +153,12 @@ UserInputService.MouseIconEnabled = true
 -- Check for saved key first
 local savedKey = getSavedKey()
 if savedKey and savedKey ~= "" then
+    print("[Macr0 Hub] Found saved key, validating...")
     -- Try to validate saved key
     local valid, response = validateKey(savedKey)
 
     if valid then
+        print("[Macr0 Hub] Saved key is valid, loading script directly...")
         -- Key is valid, load the script directly
         local loadSuccess, loadMessage = loadGameScript()
 
@@ -152,6 +169,7 @@ if savedKey and savedKey ~= "" then
                 Duration = 3,
                 Icon = "check-circle",
             })
+            print("[Macr0 Hub] Auto-loaded with saved key")
             return
         else
             WindUI:Notify({
@@ -163,10 +181,11 @@ if savedKey and savedKey ~= "" then
         end
     else
         -- Saved key is invalid, delete it
+        print("[Macr0 Hub] Saved key invalid:", response.message or "Unknown error")
         delfile(KEY_FILE)
         WindUI:Notify({
             Title = "Macr0 Hub",
-            Content = "Saved key expired. Please enter a new key.",
+            Content = "Saved key invalid: " .. (response.message or "Please enter a new key"),
             Duration = 4,
             Icon = "alert-triangle",
         })
@@ -250,7 +269,11 @@ MainTab:Button({
 
             -- Close loader window
             task.wait(1)
-            Window:Destroy()
+
+            -- Destroy window before loading script
+            pcall(function()
+                Window:Destroy()
+            end)
 
             -- Load game script
             local loadSuccess, loadMessage = loadGameScript()
@@ -262,6 +285,8 @@ MainTab:Button({
                     Duration = 5,
                     Icon = "x",
                 })
+            else
+                print("[Macr0 Hub] Script loaded successfully!")
             end
         else
             statusLabel:SetDesc("❌ " .. (response.message or "Invalid key"))
