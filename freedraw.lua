@@ -26,15 +26,14 @@ local imageRotation = 0
 
 -- Key validation check (if run directly without loader)
 local HUB_FOLDER = "Macr0_Hub"
-local KEY_FILE = HUB_FOLDER .. "/key.txt"
-local API_URL = "https://keyauth.macr0.dev/api/v1/validate"
+local API_URL_HWID = "https://keyauth.macr0.dev/api/v1/validate_hwid"
 
 -- Create hub folder
 if not isfolder(HUB_FOLDER) then
     makefolder(HUB_FOLDER)
 end
 
--- Function to validate access (checks loader flag or saved key)
+-- Function to validate access (checks loader flag, then HWID)
 local function validateAccess()
     -- Check if loader already validated (session flag)
     if _G.Macr0HubValidated then
@@ -67,41 +66,43 @@ local function validateAccess()
         return false, "HTTP request not supported"
     end
 
-    -- Check if there's a saved key to validate
-    if isfile(KEY_FILE) then
-        local key = readfile(KEY_FILE)
-        if key ~= "" then
-            local success, valid = pcall(function()
-                local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-                local robloxId = tostring(game:GetService("Players").LocalPlayer.UserId)
-                local robloxUsername = game:GetService("Players").LocalPlayer.Name
-                local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
+    -- Validate by HWID only (no key needed)
+    local success, valid = pcall(function()
+        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        local robloxId = tostring(game:GetService("Players").LocalPlayer.UserId)
+        local robloxUsername = game:GetService("Players").LocalPlayer.Name
+        local url = API_URL_HWID .. "?hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
 
-                local response = requestFunc({
-                    Url = url,
-                    Method = "GET"
-                })
+        print("[FreeDraw] Validating HWID with API...")
+        local response = requestFunc({
+            Url = url,
+            Method = "GET"
+        })
 
-                if response.StatusCode == 200 then
-                    local data = game:GetService("HttpService"):JSONDecode(response.Body)
-                    return data.valid == true
-                end
-                return false
-            end)
+        print("[FreeDraw] Response Status:", response.StatusCode)
 
-            if success and valid then
-                print("[FreeDraw] Validated with saved key")
-                return true, "Key valid"
-            else
-                -- Saved key is invalid, delete it
-                print("[FreeDraw] Saved key invalid, deleting...")
-                delfile(KEY_FILE)
-            end
+        if response.StatusCode == 200 then
+            local data = game:GetService("HttpService"):JSONDecode(response.Body)
+            print("[FreeDraw] HWID validation successful!")
+            return data.valid == true
+        elseif response.StatusCode == 404 then
+            print("[FreeDraw] HWID not registered with any key")
+            return false
+        elseif response.StatusCode == 403 then
+            local data = game:GetService("HttpService"):JSONDecode(response.Body)
+            print("[FreeDraw] License issue:", data.reason or "Unknown")
+            return false
         end
-    end
+        return false
+    end)
 
-    -- No valid session or saved key
-    return false, "Authentication required"
+    if success and valid then
+        print("[FreeDraw] HWID is bound to a valid key!")
+        return true, "HWID valid"
+    else
+        print("[FreeDraw] HWID validation failed - need to authenticate")
+        return false, "No valid license for this device"
+    end
 end
 
 -- Check if access is valid before proceeding
