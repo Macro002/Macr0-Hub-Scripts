@@ -69,7 +69,7 @@ local function validateKey(key)
     local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
     local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
 
-    local success, result = pcall(function()
+    local success, valid, data = pcall(function()
         print("[Macr0 Hub] Sending request to:", url)
 
         local response = requestFunc({
@@ -81,9 +81,9 @@ local function validateKey(key)
         print("[Macr0 Hub] Response Body:", response.Body)
 
         if response.StatusCode == 200 then
-            local data = HttpService:JSONDecode(response.Body)
-            print("[Macr0 Hub] Parsed response:", HttpService:JSONEncode(data))
-            return data.valid == true, data
+            local responseData = HttpService:JSONDecode(response.Body)
+            print("[Macr0 Hub] Parsed response:", HttpService:JSONEncode(responseData))
+            return responseData.valid == true, responseData
         else
             print("[Macr0 Hub] Server error:", response.StatusCode)
             return false, {message = "Server returned status " .. response.StatusCode}
@@ -91,12 +91,12 @@ local function validateKey(key)
     end)
 
     if not success then
-        print("[Macr0 Hub] ERROR:", tostring(result))
-        return false, {message = "Failed to connect to API: " .. tostring(result)}
+        print("[Macr0 Hub] ERROR:", tostring(valid))
+        return false, {message = "Failed to connect to API: " .. tostring(valid)}
     end
 
-    print("[Macr0 Hub] Validation complete. Valid:", result)
-    return result
+    print("[Macr0 Hub] Validation complete. Valid:", valid)
+    return valid, data or {message = "Unknown error"}
 end
 
 -- Function to load game script

@@ -45,12 +45,34 @@ local function validateStoredKey()
         return false, "Empty key"
     end
 
+    -- Try multiple HTTP request methods (same as loader)
+    local requestFunc = nil
+    local requestMethods = {
+        function() return syn and syn.request end,
+        function() return http and http.request end,
+        function() return http_request end,
+        function() return request end,
+        function() return syn and syn.http and syn.http.request end,
+    }
+
+    for _, method in ipairs(requestMethods) do
+        local func = method()
+        if func then
+            requestFunc = func
+            break
+        end
+    end
+
+    if not requestFunc then
+        return false, "HTTP request not supported"
+    end
+
     -- Validate with API
-    local success, result = pcall(function()
+    local success, valid = pcall(function()
         local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
         local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid
 
-        local response = syn.request({
+        local response = requestFunc({
             Url = url,
             Method = "GET"
         })
@@ -62,7 +84,7 @@ local function validateStoredKey()
         return false
     end)
 
-    if not success or not result then
+    if not success or not valid then
         return false, "Invalid or expired key"
     end
 
