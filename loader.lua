@@ -155,6 +155,82 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
+-- Macr0 Hub Custom Theme - Modern Dark Blue/Purple
+WindUI:AddTheme({
+    Name = "Macr0",
+
+    -- Core colors - Deep navy with purple accent
+    Accent = Color3.fromHex("#1f6feb"),
+    Background = Color3.fromHex("#0d1117"),
+    Outline = Color3.fromHex("#30363d"),
+    Text = Color3.fromHex("#f0f6fc"),
+    Placeholder = Color3.fromHex("#6e7681"),
+    Button = Color3.fromHex("#21262d"),
+    Icon = Color3.fromHex("#8b949e"),
+
+    Hover = Color3.fromHex("#58a6ff"),
+    BackgroundTransparency = 0.15,
+
+    -- Window
+    WindowBackground = Color3.fromHex("#0d1117"),
+    WindowShadow = Color3.fromHex("#010409"),
+
+    -- Window Topbar
+    WindowTopbarButtonIcon = Color3.fromHex("#8b949e"),
+    WindowTopbarTitle = Color3.fromHex("#f0f6fc"),
+    WindowTopbarAuthor = Color3.fromHex("#8b949e"),
+    WindowTopbarIcon = Color3.fromHex("#1f6feb"),
+
+    -- Tabs
+    TabBackground = Color3.fromHex("#161b22"),
+    TabTitle = Color3.fromHex("#f0f6fc"),
+    TabIcon = Color3.fromHex("#1f6feb"),
+
+    -- Elements
+    ElementBackground = Color3.fromHex("#161b22"),
+    ElementTitle = Color3.fromHex("#f0f6fc"),
+    ElementDesc = Color3.fromHex("#8b949e"),
+    ElementIcon = Color3.fromHex("#1f6feb"),
+
+    -- Popups
+    PopupBackground = Color3.fromHex("#161b22"),
+    PopupBackgroundTransparency = 0.1,
+    PopupTitle = Color3.fromHex("#f0f6fc"),
+    PopupContent = Color3.fromHex("#c9d1d9"),
+    PopupIcon = Color3.fromHex("#1f6feb"),
+
+    -- Dialogs
+    DialogBackground = Color3.fromHex("#161b22"),
+    DialogBackgroundTransparency = 0.1,
+    DialogTitle = Color3.fromHex("#f0f6fc"),
+    DialogContent = Color3.fromHex("#c9d1d9"),
+    DialogIcon = Color3.fromHex("#1f6feb"),
+
+    -- Toggle
+    Toggle = Color3.fromHex("#21262d"),
+    ToggleBar = Color3.fromHex("#1f6feb"),
+
+    -- Checkbox
+    Checkbox = Color3.fromHex("#21262d"),
+    CheckboxIcon = Color3.fromHex("#1f6feb"),
+
+    -- Slider
+    Slider = Color3.fromHex("#21262d"),
+    SliderThumb = Color3.fromHex("#1f6feb"),
+})
+
+-- Apply gradient for glass effect
+WindUI:Gradient({
+    ["0"] = { Color = Color3.fromHex("#0d1117"), Transparency = 0.12 },
+    ["50"] = { Color = Color3.fromHex("#161b22"), Transparency = 0.15 },
+    ["100"] = { Color = Color3.fromHex("#1a1f2e"), Transparency = 0.18 },
+}, {
+    Rotation = 135,
+})
+
+-- Set the theme
+WindUI:SetTheme("Macr0")
+
 -- Check for saved key first
 local savedKey = getSavedKey()
 if savedKey and savedKey ~= "" then
@@ -200,11 +276,14 @@ end
 -- Create loader window
 local Window = WindUI:CreateWindow({
     Title = "Macr0 Hub",
-    Author = "Key Verification",
-    Size = UDim2.fromOffset(550, 450),
+    Icon = "shield",
+    Author = "by Macr0",
+    Folder = "Macr0Hub",
+    Size = UDim2.fromOffset(520, 420),
+    Transparent = true,
+    Theme = "Macr0",
     SideBarWidth = 0,
-    Folder = "Macr0Hub_Loader",
-    NewElements = true,
+    HideSearchBar = true,
 })
 
 local MainTab = Window:Tab({
