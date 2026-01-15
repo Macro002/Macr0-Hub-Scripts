@@ -155,79 +155,79 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - Clean modern dark blue (like Neverlose/ExploitzHub)
+-- Macr0 Hub Custom Theme - High Contrast Modern
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core colors
-    Accent = Color3.fromHex("#3b82f6"),
-    Background = Color3.fromHex("#12141a"),
-    Outline = Color3.fromHex("#1e2230"),
+    -- Core - Vibrant purple-blue accent
+    Accent = Color3.fromHex("#7c5ce7"),
+    Background = Color3.fromHex("#0d0d12"),
+    Outline = Color3.fromHex("#7c5ce7"),
     Text = Color3.fromHex("#ffffff"),
-    Placeholder = Color3.fromHex("#6b7280"),
-    Button = Color3.fromHex("#1e2230"),
-    Icon = Color3.fromHex("#3b82f6"),
+    Placeholder = Color3.fromHex("#6c6c80"),
+    Button = Color3.fromHex("#1a1a2e"),
+    Icon = Color3.fromHex("#a78bfa"),
 
-    Hover = Color3.fromHex("#60a5fa"),
-    BackgroundTransparency = 0,
+    Hover = Color3.fromHex("#9d7eff"),
+    BackgroundTransparency = 0.15,
 
-    -- Window
-    WindowBackground = Color3.fromHex("#0d0f14"),
-    WindowShadow = Color3.fromHex("#000000"),
+    -- Window - Very dark base
+    WindowBackground = Color3.fromHex("#08080c"),
+    WindowShadow = Color3.fromHex("#7c5ce7"),
 
-    -- Window Topbar
-    WindowTopbarButtonIcon = Color3.fromHex("#9ca3af"),
+    -- Topbar
+    WindowTopbarButtonIcon = Color3.fromHex("#a78bfa"),
     WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#9ca3af"),
-    WindowTopbarIcon = Color3.fromHex("#3b82f6"),
+    WindowTopbarAuthor = Color3.fromHex("#a78bfa"),
+    WindowTopbarIcon = Color3.fromHex("#7c5ce7"),
 
-    -- Tabs/Sidebar - Darker like the examples
-    TabBackground = Color3.fromHex("#181b23"),
+    -- Tabs - Slight purple tint
+    TabBackground = Color3.fromHex("#12121a"),
     TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#3b82f6"),
+    TabIcon = Color3.fromHex("#a78bfa"),
 
-    -- Elements - Lighter cards that pop
-    ElementBackground = Color3.fromHex("#1a1d26"),
+    -- Elements - Distinct card style with purple border feel
+    ElementBackground = Color3.fromHex("#16162a"),
     ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#9ca3af"),
-    ElementIcon = Color3.fromHex("#3b82f6"),
+    ElementDesc = Color3.fromHex("#b8b8cc"),
+    ElementIcon = Color3.fromHex("#a78bfa"),
 
     -- Popups
-    PopupBackground = Color3.fromHex("#181b23"),
-    PopupBackgroundTransparency = 0,
+    PopupBackground = Color3.fromHex("#12121a"),
+    PopupBackgroundTransparency = 0.1,
     PopupTitle = Color3.fromHex("#ffffff"),
-    PopupContent = Color3.fromHex("#d1d5db"),
-    PopupIcon = Color3.fromHex("#3b82f6"),
+    PopupContent = Color3.fromHex("#d4d4e4"),
+    PopupIcon = Color3.fromHex("#a78bfa"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#181b23"),
-    DialogBackgroundTransparency = 0,
+    DialogBackground = Color3.fromHex("#12121a"),
+    DialogBackgroundTransparency = 0.1,
     DialogTitle = Color3.fromHex("#ffffff"),
-    DialogContent = Color3.fromHex("#d1d5db"),
-    DialogIcon = Color3.fromHex("#3b82f6"),
+    DialogContent = Color3.fromHex("#d4d4e4"),
+    DialogIcon = Color3.fromHex("#a78bfa"),
 
-    -- Toggle - Clean white toggle on dark track
-    Toggle = Color3.fromHex("#374151"),
-    ToggleBar = Color3.fromHex("#3b82f6"),
+    -- Toggle - Purple accent
+    Toggle = Color3.fromHex("#252540"),
+    ToggleBar = Color3.fromHex("#7c5ce7"),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#374151"),
+    Checkbox = Color3.fromHex("#252540"),
     CheckboxIcon = Color3.fromHex("#ffffff"),
 
     -- Slider
-    Slider = Color3.fromHex("#374151"),
-    SliderThumb = Color3.fromHex("#3b82f6"),
+    Slider = Color3.fromHex("#252540"),
+    SliderThumb = Color3.fromHex("#7c5ce7"),
 })
 
--- Clean gradient like the examples
+-- Gradient - Subtle purple fade
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#0d0f14"), Transparency = 0 },
-    ["100"] = { Color = Color3.fromHex("#12141a"), Transparency = 0 },
+    ["0"] = { Color = Color3.fromHex("#08080c"), Transparency = 0.1 },
+    ["100"] = { Color = Color3.fromHex("#0f0f1a"), Transparency = 0.05 },
 }, {
-    Rotation = 180,
+    Rotation = 135,
 })
 
--- Set the theme
+-- Set theme
 WindUI:SetTheme("Macr0")
 
 -- Fetch supported games list
