@@ -155,76 +155,100 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - ACTUALLY Purple
+-- Macr0 Hub Custom Theme - Purple with Style
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core - Very bright purple
-    Accent = Color3.fromHex("#9333ea"),
-    Background = Color3.fromHex("#2e1065"),
-    Outline = Color3.fromHex("#a855f7"),
+    -- Core - Purple accent with gradient
+    Accent = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#a855f7"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#7c3aed"), Transparency = 0 },
+    }, { Rotation = 90 }),
+
+    Background = Color3.fromHex("#0f0a1a"),
+    Outline = Color3.fromHex("#7c3aed"),
     Text = Color3.fromHex("#ffffff"),
-    Placeholder = Color3.fromHex("#c4b5fd"),
-    Icon = Color3.fromHex("#d8b4fe"),
+    Placeholder = Color3.fromHex("#a78bfa"),
 
-    -- Button - Visible purple
-    Button = Color3.fromHex("#581c87"),
+    -- Icon gradient purple to pink
+    Icon = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#c084fc"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#a855f7"), Transparency = 0 },
+    }, { Rotation = 45 }),
 
-    Hover = Color3.fromHex("#e9d5ff"),
-    BackgroundTransparency = 0,
+    -- Button with gradient
+    Button = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#2d1b4e"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#1a1028"), Transparency = 0 },
+    }, { Rotation = 180 }),
 
-    -- Window - Deep purple base
-    WindowBackground = Color3.fromHex("#1e1b4b"),
+    Hover = Color3.fromHex("#c084fc"),
+    BackgroundTransparency = 0.1,
+
+    -- Window - Dark with purple tint
+    WindowBackground = Color3.fromHex("#0a0610"),
     WindowShadow = Color3.fromHex("#7c3aed"),
 
     -- Topbar
-    WindowTopbarButtonIcon = Color3.fromHex("#d8b4fe"),
+    WindowTopbarButtonIcon = Color3.fromHex("#a78bfa"),
     WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#c4b5fd"),
+    WindowTopbarAuthor = Color3.fromHex("#a78bfa"),
     WindowTopbarIcon = Color3.fromHex("#a855f7"),
 
-    -- Tabs - Visible purple
-    TabBackground = Color3.fromHex("#3b0764"),
+    -- Tabs - Gradient
+    TabBackground = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#1e1333"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#120c1f"), Transparency = 0 },
+    }, { Rotation = 90 }),
     TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#d8b4fe"),
+    TabIcon = Color3.fromHex("#c084fc"),
 
-    -- Elements - Lighter purple cards that actually pop
-    ElementBackground = Color3.fromHex("#4c1d95"),
+    -- Elements - Cards with visible gradient
+    ElementBackground = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#251840"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#1a1030"), Transparency = 0 },
+    }, { Rotation = 135 }),
     ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#e9d5ff"),
-    ElementIcon = Color3.fromHex("#d8b4fe"),
+    ElementDesc = Color3.fromHex("#c4b5fd"),
+    ElementIcon = Color3.fromHex("#c084fc"),
 
     -- Popups
-    PopupBackground = Color3.fromHex("#3b0764"),
-    PopupBackgroundTransparency = 0,
+    PopupBackground = Color3.fromHex("#1a1030"),
+    PopupBackgroundTransparency = 0.05,
     PopupTitle = Color3.fromHex("#ffffff"),
-    PopupContent = Color3.fromHex("#f3e8ff"),
-    PopupIcon = Color3.fromHex("#d8b4fe"),
+    PopupContent = Color3.fromHex("#e9d5ff"),
+    PopupIcon = Color3.fromHex("#c084fc"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#3b0764"),
-    DialogBackgroundTransparency = 0,
+    DialogBackground = Color3.fromHex("#1a1030"),
+    DialogBackgroundTransparency = 0.05,
     DialogTitle = Color3.fromHex("#ffffff"),
-    DialogContent = Color3.fromHex("#f3e8ff"),
-    DialogIcon = Color3.fromHex("#d8b4fe"),
+    DialogContent = Color3.fromHex("#e9d5ff"),
+    DialogIcon = Color3.fromHex("#c084fc"),
 
-    -- Toggle - Bright purple
-    Toggle = Color3.fromHex("#581c87"),
-    ToggleBar = Color3.fromHex("#a855f7"),
+    -- Toggle with gradient bar
+    Toggle = Color3.fromHex("#2d1b4e"),
+    ToggleBar = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#a855f7"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#7c3aed"), Transparency = 0 },
+    }, { Rotation = 90 }),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#581c87"),
+    Checkbox = Color3.fromHex("#2d1b4e"),
     CheckboxIcon = Color3.fromHex("#ffffff"),
 
-    -- Slider
-    Slider = Color3.fromHex("#581c87"),
-    SliderThumb = Color3.fromHex("#a855f7"),
+    -- Slider with gradient thumb
+    Slider = Color3.fromHex("#2d1b4e"),
+    SliderThumb = WindUI:Gradient({
+        ["0"] = { Color = Color3.fromHex("#a855f7"), Transparency = 0 },
+        ["100"] = { Color = Color3.fromHex("#7c3aed"), Transparency = 0 },
+    }, { Rotation = 90 }),
 })
 
--- Main window gradient - purple to darker purple
+-- Main window gradient
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#2e1065"), Transparency = 0 },
-    ["100"] = { Color = Color3.fromHex("#1e1b4b"), Transparency = 0 },
+    ["0"] = { Color = Color3.fromHex("#0f0a1a"), Transparency = 0.05 },
+    ["100"] = { Color = Color3.fromHex("#1a1030"), Transparency = 0 },
 }, {
     Rotation = 180,
 })
