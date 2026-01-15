@@ -190,15 +190,12 @@ local function refreshImageList()
     return loadedImages
 end
 
--- Function to calculate remaining time from ISO date
-local function getTimeRemaining(expiresAt)
-    if not expiresAt then return nil end
-
-    -- Parse ISO date: 2026-01-16T00:26:27
-    local year, month, day, hour, min, sec = expiresAt:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+-- Parse ISO date to timestamp
+local function parseISODate(isoDate)
+    if not isoDate then return nil end
+    local year, month, day, hour, min, sec = isoDate:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
     if not year then return nil end
-
-    local expireTime = os.time({
+    return os.time({
         year = tonumber(year),
         month = tonumber(month),
         day = tonumber(day),
@@ -206,21 +203,43 @@ local function getTimeRemaining(expiresAt)
         min = tonumber(min),
         sec = tonumber(sec)
     })
+end
 
-    local remaining = expireTime - os.time()
-    if remaining <= 0 then return "Expired" end
+-- Calculate remaining seconds from expiry timestamp
+local function getRemainingSeconds()
+    if not licenseInfo.expires_at then return nil end
+    local expireTime = parseISODate(licenseInfo.expires_at)
+    if not expireTime then return nil end
+    return expireTime - os.time()
+end
 
-    local days = math.floor(remaining / 86400)
-    local hours = math.floor((remaining % 86400) / 3600)
-    local mins = math.floor((remaining % 3600) / 60)
+-- Format seconds to readable string
+local function formatTime(seconds)
+    if not seconds or seconds <= 0 then return "Expired" end
+
+    local days = math.floor(seconds / 86400)
+    local hours = math.floor((seconds % 86400) / 3600)
+    local mins = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
 
     if days > 0 then
         return days .. "d " .. hours .. "h"
     elseif hours > 0 then
         return hours .. "h " .. mins .. "m"
+    elseif mins > 0 then
+        return mins .. "m " .. secs .. "s"
     else
-        return mins .. "m"
+        return secs .. "s"
     end
+end
+
+-- Function to calculate remaining time from ISO date (legacy wrapper)
+local function getTimeRemaining(expiresAt)
+    if not expiresAt then return nil end
+    local expireTime = parseISODate(expiresAt)
+    if not expireTime then return nil end
+    local remaining = expireTime - os.time()
+    return formatTime(remaining)
 end
 
 -- Function to get license tag text
@@ -260,24 +279,61 @@ local licenseTag = Window:Tag({
     Title = getLicenseTagText(),
     Icon = licenseInfo.is_lifetime and "infinity" or "clock",
     Color = Color3.fromHex("#a855f7"),
-    TextColor = Color3.fromHex("#ffffff"),
-    IconColor = Color3.fromHex("#ffffff"),
     Radius = 6,
 })
 
--- Live update the license tag every minute (only for time-limited licenses)
+-- Function to handle license expiry/ban
+local function handleLicenseInvalid(reason)
+    WindUI:Notify({
+        Title = "License Invalid",
+        Content = reason or "Your license has expired or been revoked",
+        Duration = 5,
+        Icon = "alert-triangle",
+    })
+    task.wait(2)
+    pcall(function() Window:Destroy() end)
+end
+
+-- Real-time countdown for time-limited licenses (updates every second)
 if not licenseInfo.is_lifetime and licenseInfo.expires_at then
     task.spawn(function()
-        while task.wait(60) do
+        while true do
+            task.wait(1)
+            local remaining = getRemainingSeconds()
+            if remaining and remaining <= 0 then
+                handleLicenseInvalid("Your license has expired")
+                break
+            end
             pcall(function()
-                local newText = getTimeRemaining(licenseInfo.expires_at)
-                if newText and licenseTag then
-                    licenseTag:SetTitle(newText)
+                if licenseTag and remaining then
+                    licenseTag:SetTitle(formatTime(remaining))
                 end
             end)
         end
     end)
 end
+
+-- Auto-sync with API every 5 minutes to check for status changes
+task.spawn(function()
+    while task.wait(300) do -- 5 minutes
+        local result = fetchLicenseInfo()
+        if result then
+            -- Check if license became invalid
+            if not result.valid then
+                handleLicenseInvalid("License revoked or banned")
+                break
+            end
+            -- Check if expired
+            if not licenseInfo.is_lifetime and licenseInfo.expires_at then
+                local remaining = getRemainingSeconds()
+                if remaining and remaining <= 0 then
+                    handleLicenseInvalid("Your license has expired")
+                    break
+                end
+            end
+        end
+    end
+end)
 
 local ReferenceTab = Window:Tab({
     Title = "Reference",
