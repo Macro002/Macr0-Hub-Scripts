@@ -255,13 +255,29 @@ local Window = WindUI:CreateWindow({
     },
 })
 
--- Add license tag (always purple)
-Window:Tag({
+-- Add license tag (purple bg, white text/icon)
+local licenseTag = Window:Tag({
     Title = getLicenseTagText(),
     Icon = licenseInfo.is_lifetime and "infinity" or "clock",
     Color = Color3.fromHex("#a855f7"),
+    TextColor = Color3.fromHex("#ffffff"),
+    IconColor = Color3.fromHex("#ffffff"),
     Radius = 6,
 })
+
+-- Live update the license tag every minute (only for time-limited licenses)
+if not licenseInfo.is_lifetime and licenseInfo.expires_at then
+    task.spawn(function()
+        while task.wait(60) do
+            pcall(function()
+                local newText = getTimeRemaining(licenseInfo.expires_at)
+                if newText and licenseTag then
+                    licenseTag:SetTitle(newText)
+                end
+            end)
+        end
+    end)
+end
 
 local ReferenceTab = Window:Tab({
     Title = "Reference",
