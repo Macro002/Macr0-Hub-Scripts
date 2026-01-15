@@ -3,72 +3,12 @@
 -- Uses WindUI library
 
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+_G.WindUI = WindUI
 
--- Macr0 Hub Custom Theme - Clean Purple
-WindUI:AddTheme({
-    Name = "Macr0",
-
-    -- Core
-    Accent = Color3.fromHex("#a855f7"),
-    Background = Color3.fromHex("#15121f"),
-    Outline = Color3.fromHex("#2a2535"),
-    Text = Color3.fromHex("#ffffff"),
-    Placeholder = Color3.fromHex("#888888"),
-    Icon = Color3.fromHex("#a855f7"),
-    Button = Color3.fromHex("#1c1828"),
-    Hover = Color3.fromHex("#c084fc"),
-    BackgroundTransparency = 0,
-
-    -- Window - Dark purple base
-    WindowBackground = Color3.fromHex("#0e0b14"),
-    WindowShadow = Color3.fromHex("#000000"),
-
-    -- Topbar - purple buttons
-    WindowTopbarButtonIcon = Color3.fromHex("#a855f7"),
-    WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#a855f7"),
-    WindowTopbarIcon = Color3.fromHex("#a855f7"),
-
-    -- Tabs - Darker purple for separation
-    TabBackground = Color3.fromHex("#1a1528"),
-    TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#a855f7"),
-
-    -- Elements - Slightly lighter so they pop
-    ElementBackground = Color3.fromHex("#1c1828"),
-    ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#aaaaaa"),
-    ElementIcon = Color3.fromHex("#a855f7"),
-
-    -- Popups
-    PopupBackground = Color3.fromHex("#18141f"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#ffffff"),
-    PopupContent = Color3.fromHex("#cccccc"),
-    PopupIcon = Color3.fromHex("#a855f7"),
-
-    -- Dialogs
-    DialogBackground = Color3.fromHex("#18141f"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#ffffff"),
-    DialogContent = Color3.fromHex("#cccccc"),
-    DialogIcon = Color3.fromHex("#a855f7"),
-
-    -- Toggle - purple bar when on, white knob
-    Toggle = Color3.fromHex("#a855f7"),
-    ToggleBar = Color3.fromHex("#ffffff"),
-
-    -- Checkbox
-    Checkbox = Color3.fromHex("#2a2535"),
-    CheckboxIcon = Color3.fromHex("#ffffff"),
-
-    -- Slider
-    Slider = Color3.fromHex("#2a2535"),
-    SliderThumb = Color3.fromHex("#a855f7"),
-})
-
--- Set theme
-WindUI:SetTheme("Macr0")
+-- Load Macr0 theme from GitHub
+pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Macro002/Macr0-Hub-Scripts/main/theme.lua"))()
+end)
 
 -- Services
 local Players = game:GetService("Players")
@@ -159,59 +99,34 @@ local function validateAccess()
     if _G.Macr0HubValidated then
         local currentHWID = game:GetService("RbxAnalyticsService"):GetClientId()
         if _G.Macr0HubHWID == currentHWID then
-            print("[FreeDraw] Validated via loader session")
-            -- Fetch license info for tag display
             fetchLicenseInfo()
             return true, "Session valid"
         end
     end
 
     local requestFunc = getRequestFunc()
-    if not requestFunc then
-        return false, "HTTP request not supported"
-    end
+    if not requestFunc then return false, "HTTP not supported" end
 
-    -- Validate by HWID only (no key needed)
+    -- Validate by HWID
     local success, valid = pcall(function()
         local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
-        local robloxId = tostring(game:GetService("Players").LocalPlayer.UserId)
-        local robloxUsername = game:GetService("Players").LocalPlayer.Name
+        local robloxId = tostring(Players.LocalPlayer.UserId)
+        local robloxUsername = Players.LocalPlayer.Name
         local url = API_URL_HWID .. "?hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
 
-        print("[FreeDraw] Validating HWID with API...")
-        local response = requestFunc({
-            Url = url,
-            Method = "GET"
-        })
-
-        print("[FreeDraw] Response Status:", response.StatusCode)
+        local response = requestFunc({ Url = url, Method = "GET" })
 
         if response.StatusCode == 200 then
             local data = game:GetService("HttpService"):JSONDecode(response.Body)
-            print("[FreeDraw] HWID validation successful!")
-            -- Store license info
             licenseInfo.is_lifetime = data.is_lifetime or false
             licenseInfo.expires_at = data.expires_at
             licenseInfo.valid = data.valid or false
             return data.valid == true
-        elseif response.StatusCode == 404 then
-            print("[FreeDraw] HWID not registered with any key")
-            return false
-        elseif response.StatusCode == 403 then
-            local data = game:GetService("HttpService"):JSONDecode(response.Body)
-            print("[FreeDraw] License issue:", data.reason or "Unknown")
-            return false
         end
         return false
     end)
 
-    if success and valid then
-        print("[FreeDraw] HWID is bound to a valid key!")
-        return true, "HWID valid"
-    else
-        print("[FreeDraw] HWID validation failed - need to authenticate")
-        return false, "No valid license for this device"
-    end
+    return success and valid, valid and "Valid" or "Invalid license"
 end
 
 -- Check if access is valid before proceeding
@@ -275,12 +190,46 @@ local function refreshImageList()
     return loadedImages
 end
 
+-- Function to calculate remaining time from ISO date
+local function getTimeRemaining(expiresAt)
+    if not expiresAt then return nil end
+
+    -- Parse ISO date: 2026-01-16T00:26:27
+    local year, month, day, hour, min, sec = expiresAt:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+    if not year then return nil end
+
+    local expireTime = os.time({
+        year = tonumber(year),
+        month = tonumber(month),
+        day = tonumber(day),
+        hour = tonumber(hour),
+        min = tonumber(min),
+        sec = tonumber(sec)
+    })
+
+    local remaining = expireTime - os.time()
+    if remaining <= 0 then return "Expired" end
+
+    local days = math.floor(remaining / 86400)
+    local hours = math.floor((remaining % 86400) / 3600)
+    local mins = math.floor((remaining % 3600) / 60)
+
+    if days > 0 then
+        return days .. "d " .. hours .. "h"
+    elseif hours > 0 then
+        return hours .. "h " .. mins .. "m"
+    else
+        return mins .. "m"
+    end
+end
+
 -- Function to get license tag text
 local function getLicenseTagText()
     if licenseInfo.is_lifetime then
         return "Lifetime"
     elseif licenseInfo.expires_at then
-        return "Expires: " .. licenseInfo.expires_at
+        local remaining = getTimeRemaining(licenseInfo.expires_at)
+        return remaining or "Licensed"
     else
         return "Licensed"
     end
@@ -306,11 +255,11 @@ local Window = WindUI:CreateWindow({
     },
 })
 
--- Add license tag
+-- Add license tag (always purple)
 Window:Tag({
     Title = getLicenseTagText(),
     Icon = licenseInfo.is_lifetime and "infinity" or "clock",
-    Color = licenseInfo.is_lifetime and Color3.fromHex("#a855f7") or Color3.fromHex("#f59e0b"),
+    Color = Color3.fromHex("#a855f7"),
     Radius = 6,
 })
 
@@ -1923,22 +1872,19 @@ DebugTab:Button({
 DebugTab:Button({
     Title = "Refresh License",
     Callback = function()
-        addDebugLog("[Debug] Refreshing license info...")
         local result = fetchLicenseInfo()
         if result then
-            local status = licenseInfo.is_lifetime and "Lifetime" or ("Expires: " .. (licenseInfo.expires_at or "Unknown"))
-            addDebugLog("[Debug] License refreshed: " .. status)
+            local status = licenseInfo.is_lifetime and "Lifetime" or (getTimeRemaining(licenseInfo.expires_at) or "Licensed")
             WindUI:Notify({
                 Title = "License",
-                Content = "License: " .. status,
+                Content = status,
                 Duration = 3,
                 Icon = licenseInfo.is_lifetime and "infinity" or "clock",
             })
         else
-            addDebugLog("[Debug] Failed to refresh license")
             WindUI:Notify({
                 Title = "License",
-                Content = "Failed to refresh license info",
+                Content = "Failed to refresh",
                 Duration = 3,
                 Icon = "alert-triangle",
             })

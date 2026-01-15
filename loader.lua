@@ -35,82 +35,53 @@ end
 
 -- Function to validate key with API
 local function validateKey(key)
-    print("[Macr0 Hub] Starting key validation...")
-    print("[Macr0 Hub] Key:", key)
-    print("[Macr0 Hub] HWID:", game:GetService("RbxAnalyticsService"):GetClientId())
-
     -- Try multiple HTTP request methods
     local requestMethods = {
-        {name = "syn.request", func = function() return syn and syn.request end},
-        {name = "http.request", func = function() return http and http.request end},
-        {name = "http_request", func = function() return http_request end},
-        {name = "request", func = function() return request end},
-        {name = "syn.http.request", func = function() return syn and syn.http and syn.http.request end},
+        function() return syn and syn.request end,
+        function() return http and http.request end,
+        function() return http_request end,
+        function() return request end,
+        function() return syn and syn.http and syn.http.request end,
     }
 
     local requestFunc = nil
-    local methodName = nil
-
     for _, method in ipairs(requestMethods) do
-        local func = method.func()
+        local func = method()
         if func then
             requestFunc = func
-            methodName = method.name
-            print("[Macr0 Hub] Found HTTP method:", methodName)
             break
         end
     end
 
     if not requestFunc then
-        print("[Macr0 Hub] ERROR: No HTTP request method available!")
-        return false, {message = "HTTP request not supported by executor"}
+        return false, {message = "HTTP not supported"}
     end
 
     local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
     local robloxId = tostring(player.UserId)
     local robloxUsername = player.Name
-
-    -- Build URL with all parameters
     local url = API_URL .. "?key=" .. key .. "&hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. HttpService:UrlEncode(robloxUsername)
 
     local success, valid, data = pcall(function()
-        print("[Macr0 Hub] Sending request to:", url)
-
-        local response = requestFunc({
-            Url = url,
-            Method = "GET"
-        })
-
-        print("[Macr0 Hub] Response Status:", response.StatusCode)
-        print("[Macr0 Hub] Response Body:", response.Body)
+        local response = requestFunc({ Url = url, Method = "GET" })
 
         if response.StatusCode == 200 then
             local responseData = HttpService:JSONDecode(response.Body)
-            print("[Macr0 Hub] Parsed response:", HttpService:JSONEncode(responseData))
             return responseData.valid == true, responseData
         elseif response.StatusCode == 404 then
-            print("[Macr0 Hub] Key not found")
             return false, {message = "Invalid license key"}
         elseif response.StatusCode == 403 then
-            -- Parse the body to get specific reason (banned, expired, HWID mismatch)
             local responseData = HttpService:JSONDecode(response.Body)
-            print("[Macr0 Hub] Forbidden:", responseData.reason)
             return false, {message = responseData.reason or "Access denied"}
-        elseif response.StatusCode == 400 then
-            print("[Macr0 Hub] Bad request")
-            return false, {message = "Invalid request parameters"}
         else
-            print("[Macr0 Hub] Server error:", response.StatusCode)
-            return false, {message = "Server error: " .. response.StatusCode}
+            return false, {message = "Server error"}
         end
     end)
 
     if not success then
-        print("[Macr0 Hub] ERROR:", tostring(valid))
-        return false, {message = "Failed to connect to API: " .. tostring(valid)}
+        return false, {message = "Connection failed"}
     end
 
-    print("[Macr0 Hub] Validation complete. Valid:", valid)
     return valid, data or {message = "Unknown error"}
 end
 
@@ -150,76 +121,16 @@ end
 
 -- Load WindUI
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+_G.WindUI = WindUI
 
 -- Enable normal cursor when UI is open
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - Clean Purple
-WindUI:AddTheme({
-    Name = "Macr0",
-
-    -- Core
-    Accent = Color3.fromHex("#a855f7"),
-    Background = Color3.fromHex("#15121f"),
-    Outline = Color3.fromHex("#2a2535"),
-    Text = Color3.fromHex("#ffffff"),
-    Placeholder = Color3.fromHex("#888888"),
-    Icon = Color3.fromHex("#a855f7"),
-    Button = Color3.fromHex("#1c1828"),
-    Hover = Color3.fromHex("#c084fc"),
-    BackgroundTransparency = 0,
-
-    -- Window - Dark purple base
-    WindowBackground = Color3.fromHex("#0e0b14"),
-    WindowShadow = Color3.fromHex("#000000"),
-
-    -- Topbar - purple buttons
-    WindowTopbarButtonIcon = Color3.fromHex("#a855f7"),
-    WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#a855f7"),
-    WindowTopbarIcon = Color3.fromHex("#a855f7"),
-
-    -- Tabs - Darker purple for separation
-    TabBackground = Color3.fromHex("#1a1528"),
-    TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#a855f7"),
-
-    -- Elements - Slightly lighter so they pop
-    ElementBackground = Color3.fromHex("#1c1828"),
-    ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#aaaaaa"),
-    ElementIcon = Color3.fromHex("#a855f7"),
-
-    -- Popups
-    PopupBackground = Color3.fromHex("#18141f"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#ffffff"),
-    PopupContent = Color3.fromHex("#cccccc"),
-    PopupIcon = Color3.fromHex("#a855f7"),
-
-    -- Dialogs
-    DialogBackground = Color3.fromHex("#18141f"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#ffffff"),
-    DialogContent = Color3.fromHex("#cccccc"),
-    DialogIcon = Color3.fromHex("#a855f7"),
-
-    -- Toggle - purple bar when on, white knob
-    Toggle = Color3.fromHex("#a855f7"),
-    ToggleBar = Color3.fromHex("#ffffff"),
-
-    -- Checkbox
-    Checkbox = Color3.fromHex("#2a2535"),
-    CheckboxIcon = Color3.fromHex("#ffffff"),
-
-    -- Slider
-    Slider = Color3.fromHex("#2a2535"),
-    SliderThumb = Color3.fromHex("#a855f7"),
-})
-
--- Set theme
-WindUI:SetTheme("Macr0")
+-- Load Macr0 theme from GitHub
+pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Macro002/Macr0-Hub-Scripts/main/theme.lua"))()
+end)
 
 -- Fetch supported games list
 local supportedGamesList = "Loading..."
