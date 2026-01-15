@@ -99,19 +99,15 @@ if not isfolder(HUB_FOLDER) then
     makefolder(HUB_FOLDER)
 end
 
--- Function to validate access (checks loader flag, then HWID)
-local function validateAccess()
-    -- Check if loader already validated (session flag)
-    if _G.Macr0HubValidated then
-        local currentHWID = game:GetService("RbxAnalyticsService"):GetClientId()
-        if _G.Macr0HubHWID == currentHWID then
-            print("[FreeDraw] Validated via loader session")
-            return true, "Session valid"
-        end
-    end
+-- License info storage
+local licenseInfo = {
+    is_lifetime = false,
+    expires_at = nil,
+    valid = false
+}
 
-    -- Try multiple HTTP request methods (same as loader)
-    local requestFunc = nil
+-- Get HTTP request function
+local function getRequestFunc()
     local requestMethods = {
         function() return syn and syn.request end,
         function() return http and http.request end,
@@ -119,15 +115,58 @@ local function validateAccess()
         function() return request end,
         function() return syn and syn.http and syn.http.request end,
     }
-
     for _, method in ipairs(requestMethods) do
         local func = method()
-        if func then
-            requestFunc = func
-            break
+        if func then return func end
+    end
+    return nil
+end
+
+-- Function to fetch license info from API
+local function fetchLicenseInfo()
+    local requestFunc = getRequestFunc()
+    if not requestFunc then return nil end
+
+    local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+    local robloxId = tostring(game:GetService("Players").LocalPlayer.UserId)
+    local robloxUsername = game:GetService("Players").LocalPlayer.Name
+    local url = API_URL_HWID .. "?hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
+
+    local success, result = pcall(function()
+        local response = requestFunc({
+            Url = url,
+            Method = "GET"
+        })
+
+        if response.StatusCode == 200 then
+            return game:GetService("HttpService"):JSONDecode(response.Body)
+        end
+        return nil
+    end)
+
+    if success and result then
+        licenseInfo.is_lifetime = result.is_lifetime or false
+        licenseInfo.expires_at = result.expires_at
+        licenseInfo.valid = result.valid or false
+        return result
+    end
+    return nil
+end
+
+-- Function to validate access (checks loader flag, then HWID)
+local function validateAccess()
+    -- Check if loader already validated (session flag)
+    if _G.Macr0HubValidated then
+        local currentHWID = game:GetService("RbxAnalyticsService"):GetClientId()
+        if _G.Macr0HubHWID == currentHWID then
+            print("[FreeDraw] Validated via loader session")
+            -- Fetch license info for tag display
+            fetchLicenseInfo()
+            return true, "Session valid"
         end
     end
 
+    local requestFunc = getRequestFunc()
     if not requestFunc then
         return false, "HTTP request not supported"
     end
@@ -150,6 +189,10 @@ local function validateAccess()
         if response.StatusCode == 200 then
             local data = game:GetService("HttpService"):JSONDecode(response.Body)
             print("[FreeDraw] HWID validation successful!")
+            -- Store license info
+            licenseInfo.is_lifetime = data.is_lifetime or false
+            licenseInfo.expires_at = data.expires_at
+            licenseInfo.valid = data.valid or false
             return data.valid == true
         elseif response.StatusCode == 404 then
             print("[FreeDraw] HWID not registered with any key")
@@ -232,6 +275,17 @@ local function refreshImageList()
     return loadedImages
 end
 
+-- Function to get license tag text
+local function getLicenseTagText()
+    if licenseInfo.is_lifetime then
+        return "Lifetime"
+    elseif licenseInfo.expires_at then
+        return "Expires: " .. licenseInfo.expires_at
+    else
+        return "Licensed"
+    end
+end
+
 -- Create GUI
 local Window = WindUI:CreateWindow({
     Title = "Macr0 Hub - Free Draw",
@@ -241,6 +295,8 @@ local Window = WindUI:CreateWindow({
     SideBarWidth = 150,
     Folder = "Macr0Hub",
     Theme = "Macr0",
+    Transparent = true,
+    HideSearchBar = true,
     User = {
         Enabled = true,
         Anonymous = false,
@@ -250,9 +306,17 @@ local Window = WindUI:CreateWindow({
     },
 })
 
-local ReferenceTab = Window:Tab({ 
-    Title = "Reference", 
-    Icon = "image",
+-- Add license tag
+Window:Tag({
+    Title = getLicenseTagText(),
+    Icon = licenseInfo.is_lifetime and "infinity" or "clock",
+    Color = licenseInfo.is_lifetime and Color3.fromHex("#a855f7") or Color3.fromHex("#f59e0b"),
+    Radius = 6,
+})
+
+local ReferenceTab = Window:Tab({
+    Title = "Reference",
+    Icon = "images",
 })
 
 local CloningTab = Window:Tab({
@@ -1853,6 +1917,32 @@ DebugTab:Button({
             Duration = 2,
             Icon = "trash",
         })
+    end
+})
+
+DebugTab:Button({
+    Title = "Refresh License",
+    Callback = function()
+        addDebugLog("[Debug] Refreshing license info...")
+        local result = fetchLicenseInfo()
+        if result then
+            local status = licenseInfo.is_lifetime and "Lifetime" or ("Expires: " .. (licenseInfo.expires_at or "Unknown"))
+            addDebugLog("[Debug] License refreshed: " .. status)
+            WindUI:Notify({
+                Title = "License",
+                Content = "License: " .. status,
+                Duration = 3,
+                Icon = licenseInfo.is_lifetime and "infinity" or "clock",
+            })
+        else
+            addDebugLog("[Debug] Failed to refresh license")
+            WindUI:Notify({
+                Title = "License",
+                Content = "Failed to refresh license info",
+                Duration = 3,
+                Icon = "alert-triangle",
+            })
+        end
     end
 })
 
