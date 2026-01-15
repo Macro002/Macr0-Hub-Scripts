@@ -155,91 +155,76 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - Vibrant Purple with Gradients
+-- Macr0 Hub Custom Theme - ACTUALLY Purple
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core - Bright purple accent
-    Accent = Color3.fromHex("#a855f7"),
-    Background = Color3.fromHex("#1a1025"),
+    -- Core - Very bright purple
+    Accent = Color3.fromHex("#9333ea"),
+    Background = Color3.fromHex("#2e1065"),
     Outline = Color3.fromHex("#a855f7"),
     Text = Color3.fromHex("#ffffff"),
-    Placeholder = Color3.fromHex("#9ca3af"),
-    Icon = Color3.fromHex("#c084fc"),
+    Placeholder = Color3.fromHex("#c4b5fd"),
+    Icon = Color3.fromHex("#d8b4fe"),
 
-    -- Gradient button
-    Button = WindUI:Gradient({
-        ["0"] = { Color = Color3.fromHex("#2d1f3d"), Transparency = 0 },
-        ["100"] = { Color = Color3.fromHex("#1f1629"), Transparency = 0 },
-    }, {
-        Rotation = 180,
-    }),
+    -- Button - Visible purple
+    Button = Color3.fromHex("#581c87"),
 
-    Hover = Color3.fromHex("#d8b4fe"),
+    Hover = Color3.fromHex("#e9d5ff"),
     BackgroundTransparency = 0,
 
-    -- Window - Purple tinted dark
-    WindowBackground = Color3.fromHex("#110b1a"),
-    WindowShadow = Color3.fromHex("#a855f7"),
+    -- Window - Deep purple base
+    WindowBackground = Color3.fromHex("#1e1b4b"),
+    WindowShadow = Color3.fromHex("#7c3aed"),
 
     -- Topbar
-    WindowTopbarButtonIcon = Color3.fromHex("#c084fc"),
+    WindowTopbarButtonIcon = Color3.fromHex("#d8b4fe"),
     WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#c084fc"),
+    WindowTopbarAuthor = Color3.fromHex("#c4b5fd"),
     WindowTopbarIcon = Color3.fromHex("#a855f7"),
 
-    -- Tabs - Purple gradient
-    TabBackground = WindUI:Gradient({
-        ["0"] = { Color = Color3.fromHex("#251838"), Transparency = 0 },
-        ["100"] = { Color = Color3.fromHex("#1a1025"), Transparency = 0 },
-    }, {
-        Rotation = 90,
-    }),
+    -- Tabs - Visible purple
+    TabBackground = Color3.fromHex("#3b0764"),
     TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#c084fc"),
+    TabIcon = Color3.fromHex("#d8b4fe"),
 
-    -- Elements - Visible purple cards with gradient
-    ElementBackground = WindUI:Gradient({
-        ["0"] = { Color = Color3.fromHex("#2d1f3d"), Transparency = 0 },
-        ["100"] = { Color = Color3.fromHex("#221530"), Transparency = 0 },
-    }, {
-        Rotation = 135,
-    }),
+    -- Elements - Lighter purple cards that actually pop
+    ElementBackground = Color3.fromHex("#4c1d95"),
     ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#d1d5db"),
-    ElementIcon = Color3.fromHex("#c084fc"),
+    ElementDesc = Color3.fromHex("#e9d5ff"),
+    ElementIcon = Color3.fromHex("#d8b4fe"),
 
     -- Popups
-    PopupBackground = Color3.fromHex("#1f1629"),
+    PopupBackground = Color3.fromHex("#3b0764"),
     PopupBackgroundTransparency = 0,
     PopupTitle = Color3.fromHex("#ffffff"),
-    PopupContent = Color3.fromHex("#e5e7eb"),
-    PopupIcon = Color3.fromHex("#c084fc"),
+    PopupContent = Color3.fromHex("#f3e8ff"),
+    PopupIcon = Color3.fromHex("#d8b4fe"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#1f1629"),
+    DialogBackground = Color3.fromHex("#3b0764"),
     DialogBackgroundTransparency = 0,
     DialogTitle = Color3.fromHex("#ffffff"),
-    DialogContent = Color3.fromHex("#e5e7eb"),
-    DialogIcon = Color3.fromHex("#c084fc"),
+    DialogContent = Color3.fromHex("#f3e8ff"),
+    DialogIcon = Color3.fromHex("#d8b4fe"),
 
     -- Toggle - Bright purple
-    Toggle = Color3.fromHex("#3b2550"),
+    Toggle = Color3.fromHex("#581c87"),
     ToggleBar = Color3.fromHex("#a855f7"),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#3b2550"),
+    Checkbox = Color3.fromHex("#581c87"),
     CheckboxIcon = Color3.fromHex("#ffffff"),
 
     -- Slider
-    Slider = Color3.fromHex("#3b2550"),
+    Slider = Color3.fromHex("#581c87"),
     SliderThumb = Color3.fromHex("#a855f7"),
 })
 
--- Main window gradient - rich purple fade
+-- Main window gradient - purple to darker purple
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#1a1025"), Transparency = 0 },
-    ["100"] = { Color = Color3.fromHex("#0f0a14"), Transparency = 0 },
+    ["0"] = { Color = Color3.fromHex("#2e1065"), Transparency = 0 },
+    ["100"] = { Color = Color3.fromHex("#1e1b4b"), Transparency = 0 },
 }, {
     Rotation = 180,
 })
