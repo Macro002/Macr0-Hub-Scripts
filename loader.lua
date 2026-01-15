@@ -155,77 +155,76 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - Varied dark blue with depth
+-- Macr0 Hub Custom Theme - Clean modern dark blue (like Neverlose/ExploitzHub)
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core colors - Blue accent with variation
+    -- Core colors
     Accent = Color3.fromHex("#3b82f6"),
-    Background = Color3.fromHex("#0c0c10"),
-    Outline = Color3.fromHex("#2563eb"),
-    Text = Color3.fromHex("#f8fafc"),
-    Placeholder = Color3.fromHex("#64748b"),
-    Button = Color3.fromHex("#1e293b"),
-    Icon = Color3.fromHex("#60a5fa"),
+    Background = Color3.fromHex("#12141a"),
+    Outline = Color3.fromHex("#1e2230"),
+    Text = Color3.fromHex("#ffffff"),
+    Placeholder = Color3.fromHex("#6b7280"),
+    Button = Color3.fromHex("#1e2230"),
+    Icon = Color3.fromHex("#3b82f6"),
 
-    Hover = Color3.fromHex("#93c5fd"),
-    BackgroundTransparency = 0.06,
+    Hover = Color3.fromHex("#60a5fa"),
+    BackgroundTransparency = 0,
 
-    -- Window - Slightly blue tinted
-    WindowBackground = Color3.fromHex("#0f1219"),
+    -- Window
+    WindowBackground = Color3.fromHex("#0d0f14"),
     WindowShadow = Color3.fromHex("#000000"),
 
-    -- Window Topbar - Lighter for contrast
-    WindowTopbarButtonIcon = Color3.fromHex("#94a3b8"),
-    WindowTopbarTitle = Color3.fromHex("#f1f5f9"),
-    WindowTopbarAuthor = Color3.fromHex("#64748b"),
+    -- Window Topbar
+    WindowTopbarButtonIcon = Color3.fromHex("#9ca3af"),
+    WindowTopbarTitle = Color3.fromHex("#ffffff"),
+    WindowTopbarAuthor = Color3.fromHex("#9ca3af"),
     WindowTopbarIcon = Color3.fromHex("#3b82f6"),
 
-    -- Tabs - Distinct background
-    TabBackground = Color3.fromHex("#1e293b"),
-    TabTitle = Color3.fromHex("#e2e8f0"),
-    TabIcon = Color3.fromHex("#60a5fa"),
+    -- Tabs/Sidebar - Darker like the examples
+    TabBackground = Color3.fromHex("#181b23"),
+    TabTitle = Color3.fromHex("#ffffff"),
+    TabIcon = Color3.fromHex("#3b82f6"),
 
-    -- Elements - Lighter cards that stand out
-    ElementBackground = Color3.fromHex("#1a2332"),
-    ElementTitle = Color3.fromHex("#f1f5f9"),
-    ElementDesc = Color3.fromHex("#94a3b8"),
-    ElementIcon = Color3.fromHex("#60a5fa"),
+    -- Elements - Lighter cards that pop
+    ElementBackground = Color3.fromHex("#1a1d26"),
+    ElementTitle = Color3.fromHex("#ffffff"),
+    ElementDesc = Color3.fromHex("#9ca3af"),
+    ElementIcon = Color3.fromHex("#3b82f6"),
 
-    -- Popups - Slightly different shade
-    PopupBackground = Color3.fromHex("#151c28"),
-    PopupBackgroundTransparency = 0.03,
-    PopupTitle = Color3.fromHex("#f8fafc"),
-    PopupContent = Color3.fromHex("#cbd5e1"),
+    -- Popups
+    PopupBackground = Color3.fromHex("#181b23"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#ffffff"),
+    PopupContent = Color3.fromHex("#d1d5db"),
     PopupIcon = Color3.fromHex("#3b82f6"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#151c28"),
-    DialogBackgroundTransparency = 0.03,
-    DialogTitle = Color3.fromHex("#f8fafc"),
-    DialogContent = Color3.fromHex("#cbd5e1"),
+    DialogBackground = Color3.fromHex("#181b23"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#ffffff"),
+    DialogContent = Color3.fromHex("#d1d5db"),
     DialogIcon = Color3.fromHex("#3b82f6"),
 
-    -- Toggle - Visible track with blue bar
-    Toggle = Color3.fromHex("#334155"),
+    -- Toggle - Clean white toggle on dark track
+    Toggle = Color3.fromHex("#374151"),
     ToggleBar = Color3.fromHex("#3b82f6"),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#334155"),
-    CheckboxIcon = Color3.fromHex("#60a5fa"),
+    Checkbox = Color3.fromHex("#374151"),
+    CheckboxIcon = Color3.fromHex("#ffffff"),
 
     -- Slider
-    Slider = Color3.fromHex("#334155"),
+    Slider = Color3.fromHex("#374151"),
     SliderThumb = Color3.fromHex("#3b82f6"),
 })
 
--- Apply blue-tinted gradient for depth
+-- Clean gradient like the examples
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#0c0c10"), Transparency = 0.04 },
-    ["50"] = { Color = Color3.fromHex("#0f1219"), Transparency = 0.06 },
-    ["100"] = { Color = Color3.fromHex("#131a24"), Transparency = 0.08 },
+    ["0"] = { Color = Color3.fromHex("#0d0f14"), Transparency = 0 },
+    ["100"] = { Color = Color3.fromHex("#12141a"), Transparency = 0 },
 }, {
-    Rotation = 145,
+    Rotation = 180,
 })
 
 -- Set the theme
@@ -290,7 +289,7 @@ end
 local Window = WindUI:CreateWindow({
     Title = "Macr0 Hub",
     Icon = "shield",
-    Author = "by Macr0",
+    Author = "Key Verification",
     Folder = "Macr0Hub",
     Size = UDim2.fromOffset(620, 380),
     Transparent = true,
