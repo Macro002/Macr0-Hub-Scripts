@@ -155,76 +155,76 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - High Contrast Modern
+-- Macr0 Hub Custom Theme - Purple Accented
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core - Vibrant purple-blue accent
-    Accent = Color3.fromHex("#7c5ce7"),
-    Background = Color3.fromHex("#0d0d12"),
-    Outline = Color3.fromHex("#7c5ce7"),
+    -- Core - Vibrant purple accent with high contrast
+    Accent = Color3.fromHex("#9b59b6"),
+    Background = Color3.fromHex("#0a0a0f"),
+    Outline = Color3.fromHex("#9b59b6"),
     Text = Color3.fromHex("#ffffff"),
     Placeholder = Color3.fromHex("#6c6c80"),
-    Button = Color3.fromHex("#1a1a2e"),
-    Icon = Color3.fromHex("#a78bfa"),
+    Button = Color3.fromHex("#1e1e2a"),
+    Icon = Color3.fromHex("#b87fd9"),
 
-    Hover = Color3.fromHex("#9d7eff"),
-    BackgroundTransparency = 0.15,
+    Hover = Color3.fromHex("#c39bd3"),
+    BackgroundTransparency = 0,
 
-    -- Window - Very dark base
-    WindowBackground = Color3.fromHex("#08080c"),
-    WindowShadow = Color3.fromHex("#7c5ce7"),
+    -- Window - Deep dark base
+    WindowBackground = Color3.fromHex("#0a0a0f"),
+    WindowShadow = Color3.fromHex("#9b59b6"),
 
     -- Topbar
-    WindowTopbarButtonIcon = Color3.fromHex("#a78bfa"),
+    WindowTopbarButtonIcon = Color3.fromHex("#b87fd9"),
     WindowTopbarTitle = Color3.fromHex("#ffffff"),
-    WindowTopbarAuthor = Color3.fromHex("#a78bfa"),
-    WindowTopbarIcon = Color3.fromHex("#7c5ce7"),
+    WindowTopbarAuthor = Color3.fromHex("#b87fd9"),
+    WindowTopbarIcon = Color3.fromHex("#9b59b6"),
 
-    -- Tabs - Slight purple tint
-    TabBackground = Color3.fromHex("#12121a"),
+    -- Tabs - Clear separation
+    TabBackground = Color3.fromHex("#151520"),
     TabTitle = Color3.fromHex("#ffffff"),
-    TabIcon = Color3.fromHex("#a78bfa"),
+    TabIcon = Color3.fromHex("#b87fd9"),
 
-    -- Elements - Distinct card style with purple border feel
-    ElementBackground = Color3.fromHex("#16162a"),
+    -- Elements - Lighter cards that pop against dark bg
+    ElementBackground = Color3.fromHex("#1a1a28"),
     ElementTitle = Color3.fromHex("#ffffff"),
-    ElementDesc = Color3.fromHex("#b8b8cc"),
-    ElementIcon = Color3.fromHex("#a78bfa"),
+    ElementDesc = Color3.fromHex("#a0a0b0"),
+    ElementIcon = Color3.fromHex("#b87fd9"),
 
     -- Popups
-    PopupBackground = Color3.fromHex("#12121a"),
-    PopupBackgroundTransparency = 0.1,
+    PopupBackground = Color3.fromHex("#151520"),
+    PopupBackgroundTransparency = 0,
     PopupTitle = Color3.fromHex("#ffffff"),
     PopupContent = Color3.fromHex("#d4d4e4"),
-    PopupIcon = Color3.fromHex("#a78bfa"),
+    PopupIcon = Color3.fromHex("#b87fd9"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#12121a"),
-    DialogBackgroundTransparency = 0.1,
+    DialogBackground = Color3.fromHex("#151520"),
+    DialogBackgroundTransparency = 0,
     DialogTitle = Color3.fromHex("#ffffff"),
     DialogContent = Color3.fromHex("#d4d4e4"),
-    DialogIcon = Color3.fromHex("#a78bfa"),
+    DialogIcon = Color3.fromHex("#b87fd9"),
 
     -- Toggle - Purple accent
-    Toggle = Color3.fromHex("#252540"),
-    ToggleBar = Color3.fromHex("#7c5ce7"),
+    Toggle = Color3.fromHex("#2a2a3a"),
+    ToggleBar = Color3.fromHex("#9b59b6"),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#252540"),
+    Checkbox = Color3.fromHex("#2a2a3a"),
     CheckboxIcon = Color3.fromHex("#ffffff"),
 
     -- Slider
-    Slider = Color3.fromHex("#252540"),
-    SliderThumb = Color3.fromHex("#7c5ce7"),
+    Slider = Color3.fromHex("#2a2a3a"),
+    SliderThumb = Color3.fromHex("#9b59b6"),
 })
 
--- Gradient - Subtle purple fade
+-- Gradient - Purple fade for depth
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#08080c"), Transparency = 0.1 },
-    ["100"] = { Color = Color3.fromHex("#0f0f1a"), Transparency = 0.05 },
+    ["0"] = { Color = Color3.fromHex("#0a0a0f"), Transparency = 0 },
+    ["100"] = { Color = Color3.fromHex("#12121c"), Transparency = 0 },
 }, {
-    Rotation = 135,
+    Rotation = 180,
 })
 
 -- Set theme
@@ -287,9 +287,9 @@ end
 
 -- Create loader window - wider and shorter [==] shape
 local Window = WindUI:CreateWindow({
-    Title = "Macr0 Hub",
-    Icon = "shield",
-    Author = "Key Verification",
+    Title = "Macr0 Hub - Key Verification",
+    Icon = "key-round",
+    Author = "by Macr0",
     Folder = "Macr0Hub",
     Size = UDim2.fromOffset(620, 380),
     Transparent = true,
