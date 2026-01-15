@@ -155,81 +155,93 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local UserInputService = game:GetService("UserInputService")
 UserInputService.MouseIconEnabled = true
 
--- Macr0 Hub Custom Theme - Modern Dark Blue/Purple
+-- Macr0 Hub Custom Theme - Modern Dark Blue with more contrast
 WindUI:AddTheme({
     Name = "Macr0",
 
-    -- Core colors - Deep navy with purple accent
-    Accent = Color3.fromHex("#1f6feb"),
-    Background = Color3.fromHex("#0d1117"),
-    Outline = Color3.fromHex("#30363d"),
-    Text = Color3.fromHex("#f0f6fc"),
-    Placeholder = Color3.fromHex("#6e7681"),
-    Button = Color3.fromHex("#21262d"),
-    Icon = Color3.fromHex("#8b949e"),
+    -- Core colors - Higher contrast
+    Accent = Color3.fromHex("#3b82f6"),
+    Background = Color3.fromHex("#09090b"),
+    Outline = Color3.fromHex("#3b82f6"),
+    Text = Color3.fromHex("#ffffff"),
+    Placeholder = Color3.fromHex("#71717a"),
+    Button = Color3.fromHex("#18181b"),
+    Icon = Color3.fromHex("#3b82f6"),
 
-    Hover = Color3.fromHex("#58a6ff"),
-    BackgroundTransparency = 0.15,
+    Hover = Color3.fromHex("#60a5fa"),
+    BackgroundTransparency = 0.08,
 
     -- Window
-    WindowBackground = Color3.fromHex("#0d1117"),
-    WindowShadow = Color3.fromHex("#010409"),
+    WindowBackground = Color3.fromHex("#09090b"),
+    WindowShadow = Color3.fromHex("#000000"),
 
     -- Window Topbar
-    WindowTopbarButtonIcon = Color3.fromHex("#8b949e"),
-    WindowTopbarTitle = Color3.fromHex("#f0f6fc"),
-    WindowTopbarAuthor = Color3.fromHex("#8b949e"),
-    WindowTopbarIcon = Color3.fromHex("#1f6feb"),
+    WindowTopbarButtonIcon = Color3.fromHex("#a1a1aa"),
+    WindowTopbarTitle = Color3.fromHex("#ffffff"),
+    WindowTopbarAuthor = Color3.fromHex("#a1a1aa"),
+    WindowTopbarIcon = Color3.fromHex("#3b82f6"),
 
     -- Tabs
-    TabBackground = Color3.fromHex("#161b22"),
-    TabTitle = Color3.fromHex("#f0f6fc"),
-    TabIcon = Color3.fromHex("#1f6feb"),
+    TabBackground = Color3.fromHex("#18181b"),
+    TabTitle = Color3.fromHex("#ffffff"),
+    TabIcon = Color3.fromHex("#3b82f6"),
 
-    -- Elements
-    ElementBackground = Color3.fromHex("#161b22"),
-    ElementTitle = Color3.fromHex("#f0f6fc"),
-    ElementDesc = Color3.fromHex("#8b949e"),
-    ElementIcon = Color3.fromHex("#1f6feb"),
+    -- Elements - More visible backgrounds
+    ElementBackground = Color3.fromHex("#1e1e24"),
+    ElementTitle = Color3.fromHex("#ffffff"),
+    ElementDesc = Color3.fromHex("#a1a1aa"),
+    ElementIcon = Color3.fromHex("#3b82f6"),
 
     -- Popups
-    PopupBackground = Color3.fromHex("#161b22"),
-    PopupBackgroundTransparency = 0.1,
-    PopupTitle = Color3.fromHex("#f0f6fc"),
-    PopupContent = Color3.fromHex("#c9d1d9"),
-    PopupIcon = Color3.fromHex("#1f6feb"),
+    PopupBackground = Color3.fromHex("#18181b"),
+    PopupBackgroundTransparency = 0.05,
+    PopupTitle = Color3.fromHex("#ffffff"),
+    PopupContent = Color3.fromHex("#e4e4e7"),
+    PopupIcon = Color3.fromHex("#3b82f6"),
 
     -- Dialogs
-    DialogBackground = Color3.fromHex("#161b22"),
-    DialogBackgroundTransparency = 0.1,
-    DialogTitle = Color3.fromHex("#f0f6fc"),
-    DialogContent = Color3.fromHex("#c9d1d9"),
-    DialogIcon = Color3.fromHex("#1f6feb"),
+    DialogBackground = Color3.fromHex("#18181b"),
+    DialogBackgroundTransparency = 0.05,
+    DialogTitle = Color3.fromHex("#ffffff"),
+    DialogContent = Color3.fromHex("#e4e4e7"),
+    DialogIcon = Color3.fromHex("#3b82f6"),
 
-    -- Toggle
-    Toggle = Color3.fromHex("#21262d"),
-    ToggleBar = Color3.fromHex("#1f6feb"),
+    -- Toggle - Blue accent
+    Toggle = Color3.fromHex("#27272a"),
+    ToggleBar = Color3.fromHex("#3b82f6"),
 
     -- Checkbox
-    Checkbox = Color3.fromHex("#21262d"),
-    CheckboxIcon = Color3.fromHex("#1f6feb"),
+    Checkbox = Color3.fromHex("#27272a"),
+    CheckboxIcon = Color3.fromHex("#3b82f6"),
 
     -- Slider
-    Slider = Color3.fromHex("#21262d"),
-    SliderThumb = Color3.fromHex("#1f6feb"),
+    Slider = Color3.fromHex("#27272a"),
+    SliderThumb = Color3.fromHex("#3b82f6"),
 })
 
--- Apply gradient for glass effect
+-- Apply subtle gradient
 WindUI:Gradient({
-    ["0"] = { Color = Color3.fromHex("#0d1117"), Transparency = 0.12 },
-    ["50"] = { Color = Color3.fromHex("#161b22"), Transparency = 0.15 },
-    ["100"] = { Color = Color3.fromHex("#1a1f2e"), Transparency = 0.18 },
+    ["0"] = { Color = Color3.fromHex("#09090b"), Transparency = 0.05 },
+    ["100"] = { Color = Color3.fromHex("#0f0f14"), Transparency = 0.08 },
 }, {
-    Rotation = 135,
+    Rotation = 180,
 })
 
 -- Set the theme
 WindUI:SetTheme("Macr0")
+
+-- Fetch supported games list
+local supportedGamesList = "Loading..."
+pcall(function()
+    local gamesData = game:HttpGet("https://raw.githubusercontent.com/Macro002/Macr0-Hub-Scripts/main/supported_games.txt")
+    local games = {}
+    for line in gamesData:gmatch("[^\r\n]+") do
+        if line ~= "" then
+            table.insert(games, "• " .. line)
+        end
+    end
+    supportedGamesList = table.concat(games, "\n")
+end)
 
 -- Check for saved key first
 local savedKey = getSavedKey()
@@ -273,13 +285,13 @@ if savedKey and savedKey ~= "" then
     end
 end
 
--- Create loader window
+-- Create loader window - wider and shorter [==] shape
 local Window = WindUI:CreateWindow({
     Title = "Macr0 Hub",
     Icon = "shield",
     Author = "by Macr0",
     Folder = "Macr0Hub",
-    Size = UDim2.fromOffset(520, 420),
+    Size = UDim2.fromOffset(620, 380),
     Transparent = true,
     Theme = "Macr0",
     SideBarWidth = 0,
@@ -295,10 +307,16 @@ local MainTab = Window:Tab({
 local enteredKey = ""
 local saveKeyEnabled = true
 
--- Welcome message
+-- Get game name
+local gameName = "Unknown"
+pcall(function()
+    gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+end)
+
+-- Welcome message with key location
 MainTab:Paragraph({
     Title = "Welcome to Macr0 Hub",
-    Desc = "Enter your license key to continue.\nGame: " .. game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    Desc = "Enter your license key to continue.\nGame: " .. gameName .. "\nKey Location: " .. HUB_FOLDER .. "/key.txt"
 })
 
 -- Status label
@@ -414,10 +432,10 @@ MainTab:Button({
     end
 })
 
--- Supported games
+-- Supported games (fetched from repo)
 MainTab:Paragraph({
     Title = "Supported Games",
-    Desc = "• Free Draw (1547610457)\n• More games coming soon!"
+    Desc = supportedGamesList
 })
 
 Window:SetToggleKey(Enum.KeyCode.RightControl)
