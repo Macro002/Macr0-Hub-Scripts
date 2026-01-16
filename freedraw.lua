@@ -141,12 +141,16 @@ if not isValid then
     return
 end
 
--- Folder structure: Macr0_Hub/freedraw/
-local imageFolder = HUB_FOLDER .. "/freedraw"
+-- Folder structure: Macr0_Hub/freedraw/references/
+local freedrawFolder = HUB_FOLDER .. "/freedraw"
+local imageFolder = freedrawFolder .. "/references"
 local loadedImages = {}
 local selectedImage = nil
 
--- Create freedraw subfolder
+-- Create freedraw subfolders
+if not isfolder(freedrawFolder) then
+    makefolder(freedrawFolder)
+end
 if not isfolder(imageFolder) then
     makefolder(imageFolder)
 end
@@ -424,7 +428,7 @@ ReferenceTab:Button({
     Callback = function()
         if currentImageUrl == "" then
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "Enter an image URL first!",
                 Duration = 3,
                 Icon = "alert-triangle",
@@ -440,9 +444,9 @@ ReferenceTab:Button({
         end)
         
         if not success or not imageData then
-            print("[Drawing Game] Failed to download image")
+            print("[FreeDraw] Failed to download image")
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "Failed to download image!",
                 Duration = 3,
                 Icon = "x",
@@ -451,7 +455,7 @@ ReferenceTab:Button({
             return
         end
         
-        print("[Drawing Game] Downloaded:", #imageData, "bytes")
+        print("[FreeDraw] Downloaded:", #imageData, "bytes")
         
         -- Determine file extension
         local ext = "png"
@@ -478,9 +482,9 @@ ReferenceTab:Button({
             imageDropdown:Refresh(loadedImages)
         end
         
-        print("[Drawing Game] Image loaded successfully")
+        print("[FreeDraw] Image loaded successfully")
         WindUI:Notify({
-            Title = "Drawing Game",
+            Title = "FreeDraw",
             Content = "Image downloaded and saved!",
             Duration = 3,
             Icon = "check",
@@ -500,20 +504,20 @@ local imageDropdown = ReferenceTab:Dropdown({
         local filepath = imageFolder .. "/" .. option
         currentImageData = getcustomasset(filepath)
         
-        print("[Drawing Game] Selected image:", option)
-        print("[Drawing Game] File path:", filepath)
-        print("[Drawing Game] Asset URL:", currentImageData)
+        print("[FreeDraw] Selected image:", option)
+        print("[FreeDraw] File path:", filepath)
+        print("[FreeDraw] Asset URL:", currentImageData)
         
         -- Check if file exists and get size
         if isfile(filepath) then
             local fileData = readfile(filepath)
-            print("[Drawing Game] File size:", #fileData, "bytes")
+            print("[FreeDraw] File size:", #fileData, "bytes")
         else
-            print("[Drawing Game] WARNING: File does not exist!")
+            print("[FreeDraw] WARNING: File does not exist!")
         end
         
         WindUI:Notify({
-            Title = "Drawing Game",
+            Title = "FreeDraw",
             Content = "Selected: " .. option,
             Duration = 2,
             Icon = "image",
@@ -530,7 +534,7 @@ ReferenceTab:Button({
             imageDropdown:Refresh(images)
         end
         WindUI:Notify({
-            Title = "Drawing Game",
+            Title = "FreeDraw",
             Content = "Found " .. #images .. " images",
             Duration = 2,
             Icon = "check",
@@ -554,12 +558,12 @@ ReferenceTab:Button({
         end
         
         WindUI:Notify({
-            Title = "Drawing Game",
+            Title = "FreeDraw",
             Content = "Deleted " .. count .. " files",
             Duration = 3,
             Icon = "trash",
         })
-        print("[Drawing Game] Cleared folder, deleted", count, "files")
+        print("[FreeDraw] Cleared folder, deleted", count, "files")
     end
 })
 
@@ -569,7 +573,7 @@ ReferenceTab:Button({
     Callback = function()
         if not currentImageData then
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "Load an image first!",
                 Duration = 3,
                 Icon = "alert-triangle",
@@ -579,7 +583,7 @@ ReferenceTab:Button({
         
         if isPlacementMode then
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "Already in placement mode!",
                 Duration = 2,
                 Icon = "info",
@@ -596,7 +600,7 @@ ReferenceTab:Button({
         previewPart.CanCollide = false
         previewPart.Transparency = imageTransparency
         previewPart.Material = Enum.Material.SmoothPlastic
-        previewPart.Color = Color3.fromRGB(100, 200, 255)
+        previewPart.Color = Color3.fromRGB(168, 85, 247)
         previewPart.Name = "ReferenceImagePreview"
         previewPart.Orientation = Vector3.new(0, imageRotation, 0)
         previewPart.Parent = workspace
@@ -631,12 +635,12 @@ ReferenceTab:Button({
             if input.KeyCode == Enum.KeyCode.R and previewPart then
                 imageRotation = (imageRotation + 45) % 360
                 previewPart.Orientation = Vector3.new(0, imageRotation, 0)
-                print("[Drawing Game] Rotated to", imageRotation, "degrees")
+                print("[FreeDraw] Rotated to", imageRotation, "degrees")
             end
         end)
         
         WindUI:Notify({
-            Title = "Drawing Game",
+            Title = "FreeDraw",
             Content = "Click to place the image!",
             Duration = 3,
             Icon = "mouse-pointer",
@@ -663,9 +667,9 @@ ReferenceTab:Button({
                     end
                 end
                 
-                print("[Drawing Game] Image placed")
+                print("[FreeDraw] Image placed")
                 WindUI:Notify({
-                    Title = "Drawing Game",
+                    Title = "FreeDraw",
                     Content = "Image placed!",
                     Duration = 2,
                     Icon = "check",
@@ -707,7 +711,7 @@ ReferenceTab:Button({
             placedPart:Destroy()
             placedPart = nil
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "Image cleared!",
                 Duration = 2,
                 Icon = "trash",
@@ -715,7 +719,7 @@ ReferenceTab:Button({
             statusLabel:SetDesc("🗑️ Cleared")
         else
             WindUI:Notify({
-                Title = "Drawing Game",
+                Title = "FreeDraw",
                 Content = "No image to clear!",
                 Duration = 2,
                 Icon = "info",
@@ -729,7 +733,7 @@ ReferenceTab:Button({
 ReferenceTab:Slider({
     Title = "Image Size (studs)",
     Step = 0.5,
-    Value = { Min = 1, Max = 50, Default = imageSize },
+    Value = { Min = 1, Max = 100, Default = imageSize },
     Callback = function(value)
         imageSize = value
         if previewPart then
@@ -2041,7 +2045,7 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gameProce
                 img.ImageTransparency = 1
             end
         end
-        print("[Drawing Game] Image hidden (E pressed)")
+        print("[FreeDraw] Image hidden (E pressed)")
     end
 end)
 
@@ -2056,17 +2060,17 @@ game:GetService("UserInputService").InputEnded:Connect(function(input, gameProce
                 img.ImageTransparency = imageTransparency
             end
         end
-        print("[Drawing Game] Image shown (E released)")
+        print("[FreeDraw] Image shown (E released)")
     end
 end)
 
 Window:SetToggleKey(Enum.KeyCode.RightControl)
 Window:SelectTab(1)
 
-print("[Drawing Game] Reference Image Placer loaded!")
+print("[FreeDraw] Reference Image Placer loaded!")
 
 WindUI:Notify({
-    Title = "Drawing Game",
+    Title = "FreeDraw",
     Content = "Reference Image Placer ready!",
     Duration = 3,
     Icon = "check-circle",
