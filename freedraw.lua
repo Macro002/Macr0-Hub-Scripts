@@ -318,16 +318,11 @@ end
 
 -- Auto-sync with API every minute to check for status changes
 task.spawn(function()
-    print("[Macr0 Hub] Auto-sync task started, will sync every 60 seconds...")
     while task.wait(60) do -- 1 minute
-        print("[Macr0 Hub] Auto-sync running...")
         local result = fetchLicenseInfo()
-        print("[Macr0 Hub] Auto-sync result: " .. tostring(result))
         if result then
-            print("[Macr0 Hub] Auto-sync valid: " .. tostring(result.valid) .. ", statusCode: " .. tostring(result.statusCode))
             -- Check if license became invalid
             if not result.valid then
-                print("[Macr0 Hub] License invalid detected! Calling handleLicenseInvalid...")
                 handleLicenseInvalid("License revoked or banned")
                 break
             end
@@ -339,9 +334,6 @@ task.spawn(function()
                     break
                 end
             end
-            print("[Macr0 Hub] Auto-sync complete, license still valid")
-        else
-            print("[Macr0 Hub] Auto-sync returned nil result")
         end
     end
 end)
