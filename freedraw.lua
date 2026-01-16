@@ -78,8 +78,11 @@ local function fetchLicenseInfo()
             Method = "GET"
         })
 
-        if response.StatusCode == 200 then
-            return game:GetService("HttpService"):JSONDecode(response.Body)
+        -- Parse response for both success and error status codes
+        if response.Body then
+            local data = game:GetService("HttpService"):JSONDecode(response.Body)
+            data.statusCode = response.StatusCode
+            return data
         end
         return nil
     end)
