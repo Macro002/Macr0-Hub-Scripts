@@ -315,6 +315,7 @@ end
 
 -- Auto-sync with API every minute to check for status changes
 task.spawn(function()
+    print("[Macr0 Hub] Auto-sync task started, will sync every 60 seconds...")
     while task.wait(60) do -- 1 minute
         print("[Macr0 Hub] Auto-sync running...")
         local result = fetchLicenseInfo()
