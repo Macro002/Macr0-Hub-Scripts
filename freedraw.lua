@@ -364,17 +364,12 @@ local DebugTab = Window:Tab({
 
 -- Cloning variables
 local capturedLines = {}
-local isCapturing = false
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 -- Selection variables
 local isSelectionMode = false
 local selectedLines = {}
-local selectionStart = nil
-local selectionEnd = nil
-local selectionBox = nil
-local highlightedParts = {}
 
 -- Clipboard
 local copiedLines = {}
@@ -795,12 +790,12 @@ ReferenceTab:Slider({
 
 local cloningStatus = CloningTab:Paragraph({
     Title = "Status",
-    Desc = "Ready to scan workspace"
+    Desc = "Ready - Press Q to toggle selection mode"
 })
 
 CloningTab:Paragraph({
     Title = "INFO",
-    Desc = "1. Scan workspace\n2. Enter selection mode\n3. Drag to select parts\n4. Copy → Place → Draw\nR - Reset selection"
+    Desc = "Q - Toggle selection mode\nDrag on canvas to select lines\nR - Reset selection\nClick to copy → place → draw"
 })
 
 -- Function to get drawing container
@@ -808,86 +803,108 @@ local function getDrawingContainer()
     return workspace:FindFirstChild("Container(Drawing)")
 end
 
--- Function to convert 3D position to screen position
-local function worldToScreen(pos)
-    local camera = workspace.CurrentCamera
-    local screenPos, onScreen = camera:WorldToViewportPoint(pos)
-    return Vector2.new(screenPos.X, screenPos.Y), onScreen
-end
+-- Selection bounds display (purple box showing what's selected)
+local selectionBoundsBox = nil
 
--- Function to check if point is in selection box
-local function isPointInBox(point, boxStart, boxEnd)
-    local minX = math.min(boxStart.X, boxEnd.X)
-    local maxX = math.max(boxStart.X, boxEnd.X)
-    local minY = math.min(boxStart.Y, boxEnd.Y)
-    local maxY = math.max(boxStart.Y, boxEnd.Y)
-    
-    return point.X >= minX and point.X <= maxX and point.Y >= minY and point.Y <= maxY
-end
+-- Function to update selection bounds display (lightweight - just one box)
+local function updateSelectionBoundsDisplay()
+    -- Remove old bounds box
+    if selectionBoundsBox then
+        selectionBoundsBox:Destroy()
+        selectionBoundsBox = nil
+    end
 
--- Function to highlight selected parts
-local function highlightLine(line, lineData)
-    for _, part in ipairs(line:GetChildren()) do
-        if part:IsA("BasePart") then
-            local highlight = Instance.new("SelectionBox")
-            highlight.Adornee = part
-            highlight.Color3 = Color3.fromRGB(0, 255, 0)
-            highlight.LineThickness = 0.05
-            highlight.Transparency = 0.3
-            highlight.Parent = part
-            table.insert(highlightedParts, highlight)
+    -- Count selected and calculate bounds
+    local selectedCount = 0
+    local minX, maxX = math.huge, -math.huge
+    local minZ, maxZ = math.huge, -math.huge
+
+    for i, _ in pairs(selectedLines) do
+        if capturedLines[i] then
+            selectedCount = selectedCount + 1
+            for _, point in ipairs(capturedLines[i].points) do
+                minX = math.min(minX, point.X)
+                maxX = math.max(maxX, point.X)
+                minZ = math.min(minZ, point.Y)
+                maxZ = math.max(maxZ, point.Y)
+            end
         end
     end
+
+    if selectedCount > 0 then
+        -- Create single purple bounding box (no lag!)
+        selectionBoundsBox = Instance.new("Part")
+        selectionBoundsBox.Name = "SelectionBounds"
+        selectionBoundsBox.Size = Vector3.new(maxX - minX + 0.5, 0.05, maxZ - minZ + 0.5)
+        selectionBoundsBox.Position = Vector3.new((minX + maxX) / 2, 0.1, (minZ + maxZ) / 2)
+        selectionBoundsBox.Anchored = true
+        selectionBoundsBox.CanCollide = false
+        selectionBoundsBox.Transparency = 0.7
+        selectionBoundsBox.Color = Color3.fromRGB(168, 85, 247)
+        selectionBoundsBox.Material = Enum.Material.Neon
+        selectionBoundsBox.Parent = workspace
+
+        cloningStatus:SetDesc("✅ Selected " .. selectedCount .. " lines")
+    else
+        cloningStatus:SetDesc("🖱️ Drag on canvas to select")
+    end
+
+    return selectedCount
 end
 
--- Function to clear all highlights
-local function clearHighlights()
-    for _, highlight in ipairs(highlightedParts) do
-        highlight:Destroy()
+-- Function to clear selection display
+local function clearSelectionDisplay()
+    if selectionBoundsBox then
+        selectionBoundsBox:Destroy()
+        selectionBoundsBox = nil
     end
-    highlightedParts = {}
 end
 
 -- Function to scan all lines in workspace
 local function scanWorkspaceLines()
-    capturedLines = {}
     local container = getDrawingContainer()
-    
+
     if not container then
-        addDebugLog("[Cloning] No drawing container found")
         return 0
     end
-    
-    local lineCount = 0
-    
+
+    -- Track existing line models to avoid duplicates
+    local existingModels = {}
+    for _, lineData in ipairs(capturedLines) do
+        if lineData.lineModel then
+            existingModels[lineData.lineModel] = true
+        end
+    end
+
+    local newLineCount = 0
+
     for _, collector in ipairs(container:GetChildren()) do
         if collector.Name:match("^Collector") then
             for _, layer in ipairs(collector:GetChildren()) do
                 if layer.Name:match("^Layer") then
                     local layerID = layer.Name:match("%((.+)%)")
-                    
+
                     for _, line in ipairs(layer:GetChildren()) do
-                        if line.Name == "Line" and line:IsA("Model") then
+                        if line.Name == "Line" and line:IsA("Model") and not existingModels[line] then
                             local points = {}
                             local color = Color3.new(0, 0, 0)
                             local thickness = 0.2
-                            
-                            -- Extract points from line parts
+
                             for _, part in ipairs(line:GetChildren()) do
                                 if part:IsA("BasePart") then
                                     local pos = part.Position
                                     table.insert(points, Vector2.new(pos.X, pos.Z))
-                                    
+
                                     if #points == 1 then
                                         color = part.Color
                                     end
-                                    
+
                                     if part.Size.Y > 0 then
                                         thickness = math.max(thickness, part.Size.Y)
                                     end
                                 end
                             end
-                            
+
                             if #points > 0 then
                                 table.insert(capturedLines, {
                                     layerID = layerID,
@@ -897,7 +914,7 @@ local function scanWorkspaceLines()
                                     points = points,
                                     lineModel = line
                                 })
-                                lineCount = lineCount + 1
+                                newLineCount = newLineCount + 1
                             end
                         end
                     end
@@ -905,162 +922,119 @@ local function scanWorkspaceLines()
             end
         end
     end
-    
-    addDebugLog("[Cloning] Captured " .. lineCount .. " lines")
-    return lineCount
+
+    return newLineCount
 end
 
--- Scan button
-CloningTab:Button({
-    Title = "Scan Workspace",
-    Callback = function()
-        cloningStatus:SetDesc("⏳ Scanning...")
+-- 3D Selection plane (draggable on canvas)
+local selectionPlane = nil
+local selectionPlaneStart = nil
+local isDraggingSelection = false
+
+-- Function to check if a line intersects with selection box (in world coords)
+local function lineIntersectsBox(lineData, boxMinX, boxMaxX, boxMinZ, boxMaxZ)
+    for _, point in ipairs(lineData.points) do
+        if point.X >= boxMinX and point.X <= boxMaxX and point.Y >= boxMinZ and point.Y <= boxMaxZ then
+            return true
+        end
+    end
+    return false
+end
+
+-- Create/update 3D selection plane while dragging
+local function updateSelectionPlane(startPos, endPos)
+    if not selectionPlane then
+        selectionPlane = Instance.new("Part")
+        selectionPlane.Name = "SelectionPlane"
+        selectionPlane.Anchored = true
+        selectionPlane.CanCollide = false
+        selectionPlane.Transparency = 0.8
+        selectionPlane.Color = Color3.fromRGB(168, 85, 247)
+        selectionPlane.Material = Enum.Material.Neon
+        selectionPlane.Parent = workspace
+    end
+
+    local minX = math.min(startPos.X, endPos.X)
+    local maxX = math.max(startPos.X, endPos.X)
+    local minZ = math.min(startPos.Z, endPos.Z)
+    local maxZ = math.max(startPos.Z, endPos.Z)
+
+    selectionPlane.Size = Vector3.new(maxX - minX, 0.02, maxZ - minZ)
+    selectionPlane.Position = Vector3.new((minX + maxX) / 2, 0.05, (minZ + maxZ) / 2)
+    selectionPlane.Visible = true
+end
+
+-- Remove selection plane
+local function clearSelectionPlane()
+    if selectionPlane then
+        selectionPlane:Destroy()
+        selectionPlane = nil
+    end
+end
+
+-- Live update connection for new lines
+local liveUpdateConnection = nil
+
+-- Toggle selection mode function
+local function toggleSelectionMode()
+    isSelectionMode = not isSelectionMode
+
+    if isSelectionMode then
+        -- Initial scan
+        capturedLines = {}
         local count = scanWorkspaceLines()
-        
-        if count > 0 then
-            WindUI:Notify({
-                Title = "Cloning",
-                Content = "Captured " .. count .. " lines!",
-                Duration = 3,
-                Icon = "check",
-            })
-            cloningStatus:SetDesc("✅ Captured " .. count .. " lines")
-        else
-            WindUI:Notify({
-                Title = "Cloning",
-                Content = "No lines found in workspace",
-                Duration = 3,
-                Icon = "alert-triangle",
-            })
-            cloningStatus:SetDesc("❌ No lines found")
-        end
-    end
-})
+        addDebugLog("[Cloning] Selection mode ON - Found " .. count .. " lines")
 
--- Selection mode toggle
-CloningTab:Button({
-    Title = "Enter Selection Mode",
-    Callback = function()
-        if #capturedLines == 0 then
-            WindUI:Notify({
-                Title = "Cloning",
-                Content = "Scan workspace first!",
-                Duration = 3,
-                Icon = "alert-triangle",
-            })
-            return
-        end
-        
-        isSelectionMode = not isSelectionMode
-        
-        if isSelectionMode then
-            cloningStatus:SetDesc("🖱️ Selection mode: Drag to select parts")
-            WindUI:Notify({
-                Title = "Cloning",
-                Content = "Selection mode active! Drag to select, R to reset",
-                Duration = 3,
-                Icon = "mouse-pointer",
-            })
-        else
-            cloningStatus:SetDesc("⏹️ Selection mode disabled")
-            clearHighlights()
-            if selectionBox then
-                selectionBox:Destroy()
-                selectionBox = nil
-            end
-        end
-    end
-})
+        cloningStatus:SetDesc("🖱️ Drag on canvas to select (" .. count .. " lines)")
+        WindUI:Notify({
+            Title = "Cloning",
+            Content = "Selection mode ON - " .. count .. " lines available",
+            Duration = 2,
+            Icon = "mouse-pointer",
+        })
 
--- Create selection box GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SelectionBoxGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
-
--- Selection mode handler
-local selectionConnection = nil
-local dragConnection = nil
-local dragStartConnection = nil
-local dragEndConnection = nil
-
-dragStartConnection = mouse.Button1Down:Connect(function()
-    if isSelectionMode and #capturedLines > 0 then
-        selectionStart = Vector2.new(mouse.X, mouse.Y)
-        selectionEnd = selectionStart
-        
-        -- Create visual selection box
-        if not selectionBox then
-            selectionBox = Instance.new("Frame")
-            selectionBox.BorderSizePixel = 2
-            selectionBox.BorderColor3 = Color3.fromRGB(0, 255, 0)
-            selectionBox.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            selectionBox.BackgroundTransparency = 0.8
-            selectionBox.ZIndex = 10
-            selectionBox.Parent = screenGui
-        end
-    end
-end)
-
--- Update selection box while dragging
-dragConnection = RunService.RenderStepped:Connect(function()
-    if isSelectionMode and selectionStart and mouse.Button1Down then
-        selectionEnd = Vector2.new(mouse.X, mouse.Y)
-        
-        if selectionBox then
-            local minX = math.min(selectionStart.X, selectionEnd.X)
-            local maxX = math.max(selectionStart.X, selectionEnd.X)
-            local minY = math.min(selectionStart.Y, selectionEnd.Y)
-            local maxY = math.max(selectionStart.Y, selectionEnd.Y)
-            
-            selectionBox.Position = UDim2.new(0, minX, 0, minY)
-            selectionBox.Size = UDim2.new(0, maxX - minX, 0, maxY - minY)
-            selectionBox.Visible = true
-        end
-    end
-end)
-
-dragEndConnection = mouse.Button1Up:Connect(function()
-    if isSelectionMode and selectionStart then
-        selectionEnd = Vector2.new(mouse.X, mouse.Y)
-        
-        -- Hide selection box
-        if selectionBox then
-            selectionBox.Visible = false
-        end
-        
-        -- Check which lines have parts in selection
-        local newSelected = {}
-        
-        for i, lineData in ipairs(capturedLines) do
-            -- Check each point individually
-            for _, point in ipairs(lineData.points) do
-                local worldPos = Vector3.new(point.X, 0, point.Y)
-                local screenPos, onScreen = worldToScreen(worldPos)
-                
-                if onScreen and isPointInBox(screenPos, selectionStart, selectionEnd) then
-                    -- Select this line
-                    if not selectedLines[i] then
-                        selectedLines[i] = true
-                    end
-                    break
+        -- Start live update loop for new lines
+        liveUpdateConnection = task.spawn(function()
+            while isSelectionMode do
+                task.wait(2) -- Check every 2 seconds
+                local newCount = scanWorkspaceLines()
+                if newCount > 0 then
+                    addDebugLog("[Cloning] Found " .. newCount .. " new lines")
                 end
             end
+        end)
+    else
+        -- Disable selection mode
+        clearSelectionPlane()
+        clearSelectionDisplay()
+        selectedLines = {}
+
+        if liveUpdateConnection then
+            task.cancel(liveUpdateConnection)
+            liveUpdateConnection = nil
         end
-        
-        -- Highlight all selected lines
-        clearHighlights()
-        local selectedCount = 0
-        for i, _ in pairs(selectedLines) do
-            if capturedLines[i] and capturedLines[i].lineModel then
-                highlightLine(capturedLines[i].lineModel, capturedLines[i])
-                selectedCount = selectedCount + 1
-            end
-        end
-        
-        cloningStatus:SetDesc("✅ Selected " .. selectedCount .. " lines")
-        selectionStart = nil
-        selectionEnd = nil
+
+        cloningStatus:SetDesc("⏹️ Selection mode OFF")
+        WindUI:Notify({
+            Title = "Cloning",
+            Content = "Selection mode OFF",
+            Duration = 2,
+            Icon = "square",
+        })
+    end
+end
+
+-- Selection mode toggle button
+CloningTab:Button({
+    Title = "Toggle Selection Mode (Q)",
+    Callback = toggleSelectionMode
+})
+
+-- Q key to toggle selection mode
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Q then
+        toggleSelectionMode()
     end
 end)
 
@@ -1069,35 +1043,89 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.R and isSelectionMode then
         selectedLines = {}
-        clearHighlights()
+        clearSelectionDisplay()
         cloningStatus:SetDesc("🔄 Selection reset")
         WindUI:Notify({
             Title = "Cloning",
-            Content = "Selection reset!",
+            Content = "Selection cleared",
             Duration = 2,
             Icon = "refresh-cw",
         })
     end
 end)
 
+-- Mouse drag for 3D selection on canvas
+local selectionDragStart = nil
+local selectionDragConnection = nil
+
+mouse.Button1Down:Connect(function()
+    if isSelectionMode and mouse.Hit then
+        local hitPos = mouse.Hit.Position
+        -- Only start selection if clicking near ground level (drawing surface)
+        if math.abs(hitPos.Y) < 5 then
+            selectionDragStart = Vector3.new(hitPos.X, 0, hitPos.Z)
+            isDraggingSelection = true
+        end
+    end
+end)
+
+-- Update selection plane while dragging
+RunService.RenderStepped:Connect(function()
+    if isSelectionMode and isDraggingSelection and selectionDragStart and mouse.Hit then
+        local hitPos = mouse.Hit.Position
+        local currentPos = Vector3.new(hitPos.X, 0, hitPos.Z)
+        updateSelectionPlane(selectionDragStart, currentPos)
+    end
+end)
+
+mouse.Button1Up:Connect(function()
+    if isSelectionMode and isDraggingSelection and selectionDragStart and mouse.Hit then
+        local hitPos = mouse.Hit.Position
+        local endPos = Vector3.new(hitPos.X, 0, hitPos.Z)
+
+        -- Calculate selection bounds
+        local minX = math.min(selectionDragStart.X, endPos.X)
+        local maxX = math.max(selectionDragStart.X, endPos.X)
+        local minZ = math.min(selectionDragStart.Z, endPos.Z)
+        local maxZ = math.max(selectionDragStart.Z, endPos.Z)
+
+        -- Only select if dragged a reasonable distance
+        if (maxX - minX) > 0.5 or (maxZ - minZ) > 0.5 then
+            -- Find lines that intersect with selection
+            for i, lineData in ipairs(capturedLines) do
+                if lineIntersectsBox(lineData, minX, maxX, minZ, maxZ) then
+                    selectedLines[i] = true
+                end
+            end
+
+            updateSelectionBoundsDisplay()
+        end
+
+        -- Clear drag plane
+        clearSelectionPlane()
+        selectionDragStart = nil
+        isDraggingSelection = false
+    end
+end)
+
 -- Copy selected lines
 CloningTab:Button({
-    Title = "Copy Selected Lines",
+    Title = "Copy Selected",
     Callback = function()
         local count = 0
         copiedLines = {}
-        
+
         for i, _ in pairs(selectedLines) do
             if capturedLines[i] then
                 table.insert(copiedLines, capturedLines[i])
                 count = count + 1
             end
         end
-        
+
         if count > 0 then
             WindUI:Notify({
                 Title = "Cloning",
-                Content = "Copied " .. count .. " lines to clipboard!",
+                Content = "Copied " .. count .. " lines!",
                 Duration = 3,
                 Icon = "clipboard",
             })
@@ -1113,9 +1141,9 @@ CloningTab:Button({
     end
 })
 
--- Start placement mode (OPTIMIZED - no lag)
+-- Place copied lines
 CloningTab:Button({
-    Title = "Place Copied Lines",
+    Title = "Place Copied",
     Callback = function()
         if #copiedLines == 0 then
             WindUI:Notify({
@@ -1126,23 +1154,22 @@ CloningTab:Button({
             })
             return
         end
-        
+
         isPlacementMode = true
-        cloningStatus:SetDesc("🖱️ Click to place copied lines")
-        
-        -- Create single preview part (box showing bounds)
+        cloningStatus:SetDesc("🖱️ Click to place")
+
         if previewFolder then
             previewFolder:Destroy()
         end
-        
+
         previewFolder = Instance.new("Folder")
         previewFolder.Name = "PlacementPreview"
         previewFolder.Parent = workspace
-        
-        -- Calculate bounds of copied lines
+
+        -- Calculate bounds
         local minX, maxX = math.huge, -math.huge
         local minY, maxY = math.huge, -math.huge
-        
+
         for _, lineData in ipairs(copiedLines) do
             for _, point in ipairs(lineData.points) do
                 minX = math.min(minX, point.X)
@@ -1151,26 +1178,23 @@ CloningTab:Button({
                 maxY = math.max(maxY, point.Y)
             end
         end
-        
-        local centerX = (minX + maxX) / 2
-        local centerY = (minY + maxY) / 2
+
         local sizeX = maxX - minX
         local sizeY = maxY - minY
-        
-        -- Create single bounding box preview (MUCH faster!)
+
+        -- Purple bounding box preview
         local previewPart = Instance.new("Part")
         previewPart.Size = Vector3.new(sizeX, 0.1, sizeY)
         previewPart.Anchored = true
         previewPart.CanCollide = false
         previewPart.Transparency = 0.7
-        previewPart.Color = Color3.fromRGB(0, 255, 0)
+        previewPart.Color = Color3.fromRGB(168, 85, 247)
         previewPart.Material = Enum.Material.Neon
         previewPart.Name = "BoundingBox"
         previewPart.Parent = previewFolder
-        
-        placementOffset = Vector2.new(centerX, centerY)
-        
-        -- Follow mouse
+
+        placementOffset = Vector2.new((minX + maxX) / 2, (minY + maxY) / 2)
+
         local placementConnection
         placementConnection = RunService.RenderStepped:Connect(function()
             if previewFolder and mouse.Hit then
@@ -1179,50 +1203,29 @@ CloningTab:Button({
                 previewPart.Position = Vector3.new(hitPos.X, 0.5, hitPos.Z)
             end
         end)
-        
-        -- Click to confirm placement
+
         local placeConnection
         placeConnection = mouse.Button1Down:Connect(function()
-            if isPlacementMode then
+            if isPlacementMode and not isSelectionMode then
                 isPlacementMode = false
                 placementConnection:Disconnect()
                 placeConnection:Disconnect()
-                
-                cloningStatus:SetDesc("✅ Placement confirmed - Ready to draw")
+
+                cloningStatus:SetDesc("✅ Ready to draw")
                 WindUI:Notify({
                     Title = "Cloning",
-                    Content = "Position set! Click 'Draw Copied Lines' to draw.",
+                    Content = "Position set! Click 'Draw' to draw.",
                     Duration = 3,
                     Icon = "check",
                 })
             end
         end)
-        
+
         WindUI:Notify({
             Title = "Cloning",
-            Content = "Move mouse to position, click to confirm",
+            Content = "Move to position, click to confirm",
             Duration = 3,
             Icon = "mouse-pointer",
-        })
-    end
-})
-
--- Clear placement preview
-CloningTab:Button({
-    Title = "Clear Placement",
-    Callback = function()
-        if previewFolder then
-            previewFolder:Destroy()
-            previewFolder = nil
-        end
-        isPlacementMode = false
-        placementOffset = Vector2.new(0, 0)
-        cloningStatus:SetDesc("🗑️ Placement cleared")
-        WindUI:Notify({
-            Title = "Cloning",
-            Content = "Placement cleared",
-            Duration = 2,
-            Icon = "trash",
         })
     end
 })
@@ -1249,7 +1252,7 @@ end
 
 -- Draw copied lines at placement position
 CloningTab:Button({
-    Title = "Draw Copied Lines",
+    Title = "Draw Copied",
     Callback = function()
         if #copiedLines == 0 then
             WindUI:Notify({
@@ -1418,6 +1421,10 @@ Window:OnDestroy(function()
     if clickConnection then clickConnection:Disconnect() end
     if previewPart then previewPart:Destroy() end
     if placedPart then placedPart:Destroy() end
+    if selectionBoundsBox then selectionBoundsBox:Destroy() end
+    if selectionPlane then selectionPlane:Destroy() end
+    if previewFolder then previewFolder:Destroy() end
+    if liveUpdateConnection then task.cancel(liveUpdateConnection) end
 end)
 
 -- Import/Export Tab
