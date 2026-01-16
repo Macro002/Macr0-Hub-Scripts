@@ -1942,21 +1942,66 @@ DebugTab:Button({
 })
 
 DebugTab:Button({
-    Title = "Refresh License",
+    Title = "Sync License Status",
     Callback = function()
-        local result = fetchLicenseInfo()
-        if result then
+        -- Re-fetch from API
+        local requestFunc = getRequestFunc()
+        if not requestFunc then
+            WindUI:Notify({
+                Title = "Sync",
+                Content = "HTTP not available",
+                Duration = 3,
+                Icon = "alert-triangle",
+            })
+            return
+        end
+
+        local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+        local robloxId = tostring(Players.LocalPlayer.UserId)
+        local robloxUsername = Players.LocalPlayer.Name
+        local url = API_URL_HWID .. "?hwid=" .. hwid .. "&roblox_id=" .. robloxId .. "&roblox_username=" .. game:GetService("HttpService"):UrlEncode(robloxUsername)
+
+        local success, response = pcall(function()
+            return requestFunc({ Url = url, Method = "GET" })
+        end)
+
+        if not success then
+            WindUI:Notify({
+                Title = "Sync",
+                Content = "Connection failed",
+                Duration = 3,
+                Icon = "wifi-off",
+            })
+            return
+        end
+
+        if response.StatusCode == 200 then
+            local data = game:GetService("HttpService"):JSONDecode(response.Body)
+            licenseInfo.is_lifetime = data.is_lifetime or false
+            licenseInfo.expires_at = data.expires_at
+            licenseInfo.valid = data.valid or false
+
+            if not data.valid then
+                handleLicenseInvalid("License revoked or banned")
+                return
+            end
+
             local status = licenseInfo.is_lifetime and "Lifetime" or (getTimeRemaining(licenseInfo.expires_at) or "Licensed")
             WindUI:Notify({
-                Title = "License",
-                Content = status,
+                Title = "Sync",
+                Content = "Synced: " .. status,
                 Duration = 3,
-                Icon = licenseInfo.is_lifetime and "infinity" or "clock",
+                Icon = "check",
             })
+        elseif response.StatusCode == 403 then
+            local data = game:GetService("HttpService"):JSONDecode(response.Body)
+            handleLicenseInvalid(data.reason or "License banned")
+        elseif response.StatusCode == 404 then
+            handleLicenseInvalid("License not found")
         else
             WindUI:Notify({
-                Title = "License",
-                Content = "Failed to refresh",
+                Title = "Sync",
+                Content = "Server error: " .. response.StatusCode,
                 Duration = 3,
                 Icon = "alert-triangle",
             })
