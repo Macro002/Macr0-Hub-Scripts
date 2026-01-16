@@ -313,9 +313,9 @@ if not licenseInfo.is_lifetime and licenseInfo.expires_at then
     end)
 end
 
--- Auto-sync with API every 5 minutes to check for status changes
+-- Auto-sync with API every minute to check for status changes
 task.spawn(function()
-    while task.wait(300) do -- 5 minutes
+    while task.wait(60) do -- 1 minute
         local result = fetchLicenseInfo()
         if result then
             -- Check if license became invalid
