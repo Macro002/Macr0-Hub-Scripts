@@ -323,7 +323,7 @@ task.spawn(function()
         if result then
             -- Check if license became invalid
             if not result.valid then
-                handleLicenseInvalid("License revoked or banned")
+                handleLicenseInvalid(result.reason or "License revoked or banned")
                 break
             end
             -- Check if expired
