@@ -1,53 +1,28 @@
--- Rate Limiter Testing Script
--- Goal: Understand how the createLine rate limiter works
+-- Rate Limiter Testing Script v4
+-- Auto-runs tests, no manual function calls needed
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local InsertService = game:GetService("InsertService")
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- ============================================
--- DISCOVERY: Key game structures
--- ============================================
--- Player.Trackers (ObjectValue) -> Value = Collector(PlayerID)
---   └── Tracker(LayerID) (ObjectValue) -> Value = Layer(LayerID)
---       └── Attributes: id, index, name, visible
---
--- InsertService.InsertionHash (ObjectValue) -> Value = {GUID}
---   ^ This might track last insertion for rate limiting!
---
--- createLine args:
---   [1] GUID (string) - unique line identifier
---   [2] Table:
---       [1] LayerID (string)
---       [2] {color, transparency, thickness}
---       [3] {Vector2 points...}
--- ============================================
+-- Your current position area
+local BASE_X = -790
+local BASE_Z = 394
 
--- Find the createLine remote
-local function findCreateLineRemote()
-    local path = ReplicatedStorage:FindFirstChild("packages")
-    if path then
-        path = path:FindFirstChild("_Index")
-        if path then
-            path = path:FindFirstChild("vorlias_net@2.1.4")
-            if path then
-                path = path:FindFirstChild("net")
-                if path then
-                    path = path:FindFirstChild("_NetManaged")
-                    if path then
-                        return path:FindFirstChild("createLine")
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
+print("\n========================================")
+print("RATE LIMITER TESTING SCRIPT v4")
+print("========================================")
 
-local createLineRemote = findCreateLineRemote()
-print("[Test] createLine remote found:", createLineRemote ~= nil)
+-- Find createLine remote
+local createLineRemote = ReplicatedStorage
+    :WaitForChild("packages")
+    :WaitForChild("_Index")
+    :WaitForChild("vorlias_net@2.1.4")
+    :WaitForChild("net")
+    :WaitForChild("_NetManaged")
+    :WaitForChild("createLine")
+
+print("[Setup] createLine remote found:", createLineRemote ~= nil)
 
 -- Generate GUID
 local function generateGUID()
@@ -60,15 +35,27 @@ end
 
 -- Get current layer ID
 local function getCurrentLayerID()
+    local trackers = player:FindFirstChild("Trackers")
+    if trackers then
+        for _, tracker in ipairs(trackers:GetChildren()) do
+            local id = tracker:GetAttribute("id")
+            if id then
+                print("[Setup] Found layer ID:", id)
+                return id
+            end
+        end
+    end
+
+    -- Fallback: check workspace
     local container = workspace:FindFirstChild("Container(Drawing)")
     if container then
         local myCollector = container:FindFirstChild("Collector(" .. player.UserId .. ")")
         if myCollector then
-            local layers = myCollector:GetChildren()
-            if #layers > 0 then
-                local lastLayer = layers[#layers]
-                if lastLayer.Name:match("^Layer%(") then
-                    return lastLayer.Name:match("%((.+)%)")
+            for _, layer in ipairs(myCollector:GetChildren()) do
+                if layer.Name:match("^Layer%(") then
+                    local id = layer.Name:match("%((.+)%)")
+                    print("[Setup] Found layer ID from workspace:", id)
+                    return id
                 end
             end
         end
@@ -76,637 +63,154 @@ local function getCurrentLayerID()
     return nil
 end
 
--- Draw a simple test line
-local function drawTestLine(x, z, length)
-    local layerID = getCurrentLayerID()
-    if not layerID or not createLineRemote then
-        print("[Test] Missing layer or remote!")
-        return false
-    end
+local layerID = getCurrentLayerID()
+if not layerID then
+    warn("[Setup] NO LAYER FOUND! Make sure you have a layer selected in the game.")
+    return
+end
 
-    local points = {
-        Vector2.new(x, z),
-        Vector2.new(x + length, z)
+print("[Setup] Using layer:", layerID)
+print("[Setup] Drawing near position:", BASE_X, BASE_Z)
+print("")
+
+-- ============================================
+-- TEST 1: Single line with many points (BYPASS TEST)
+-- ============================================
+print("[Test 1] MULTI-POINT LINE TEST")
+print("[Test 1] Drawing 1 line with 200 points...")
+
+local points = {}
+for i = 1, 200 do
+    -- Create a spiral pattern
+    local angle = i * 0.1
+    local radius = i * 0.05
+    local x = BASE_X + math.cos(angle) * radius
+    local z = BASE_Z + math.sin(angle) * radius
+    table.insert(points, Vector2.new(x, z))
+end
+
+createLineRemote:FireServer(
+    generateGUID(),
+    {
+        layerID,
+        {
+            color = Color3.fromRGB(255, 0, 255), -- Purple
+            transparency = 0,
+            thickness = 0.2
+        },
+        points
     }
+)
 
-    local success, err = pcall(function()
-        createLineRemote:FireServer(
-            generateGUID(),
-            {
-                layerID,
-                {
-                    color = Color3.fromRGB(255, 0, 0),
-                    transparency = 0,
-                    thickness = 0.3
-                },
-                points
-            }
-        )
-    end)
+print("[Test 1] SENT! Look for a PURPLE SPIRAL near your position")
+print("[Test 1] If it appears = BYPASS CONFIRMED (points don't count toward limit)")
+print("")
 
-    return success
-end
+task.wait(1)
 
 -- ============================================
--- TEST 1: Burst test - how many lines before rate limit?
+-- TEST 2: Burst test - rapid fire lines
 -- ============================================
-local function testBurstLimit()
-    print("\n[Test 1] BURST TEST - Drawing lines as fast as possible...")
-    print("[Test 1] Watch for rate limit message in game...")
+print("[Test 2] BURST TEST - 20 lines as fast as possible")
 
-    local startTime = tick()
-    local lineCount = 0
-
-    for i = 1, 50 do
-        local success = drawTestLine(i * 2, 0, 1)
-        if success then
-            lineCount = lineCount + 1
-        end
-        -- No delay - pure burst
-    end
-
-    local elapsed = tick() - startTime
-    print("[Test 1] Drew " .. lineCount .. " lines in " .. string.format("%.3f", elapsed) .. "s")
-    print("[Test 1] Rate: " .. string.format("%.1f", lineCount / elapsed) .. " lines/sec")
-end
-
--- ============================================
--- TEST 2: Find the safe threshold
--- ============================================
-local function testSafeThreshold(delay)
-    print("\n[Test 2] THRESHOLD TEST - Delay: " .. delay .. "s")
-
-    local lineCount = 0
-    local startTime = tick()
-
-    for i = 1, 30 do
-        local success = drawTestLine(50 + i * 2, 10, 1)
-        if success then
-            lineCount = lineCount + 1
-        end
-        task.wait(delay)
-    end
-
-    local elapsed = tick() - startTime
-    print("[Test 2] Drew " .. lineCount .. " lines in " .. string.format("%.2f", elapsed) .. "s")
-    print("[Test 2] Effective rate: " .. string.format("%.2f", lineCount / elapsed) .. " lines/sec")
-end
-
--- ============================================
--- TEST 3: Recovery time test
--- ============================================
-local function testRecoveryTime()
-    print("\n[Test 3] RECOVERY TEST - Trigger limit then test recovery...")
-
-    -- First trigger the rate limit
-    print("[Test 3] Triggering rate limit...")
-    for i = 1, 20 do
-        drawTestLine(100 + i * 2, 20, 1)
-    end
-
-    -- Now test recovery at different intervals
-    local recoveryTimes = {1, 2, 3, 5}
-
-    for _, waitTime in ipairs(recoveryTimes) do
-        print("[Test 3] Waiting " .. waitTime .. " seconds...")
-        task.wait(waitTime)
-
-        local success = drawTestLine(100, 30 + waitTime * 5, 5)
-        print("[Test 3] After " .. waitTime .. "s wait - Line drew: " .. tostring(success))
-    end
-end
-
--- ============================================
--- TEST 4: Packet inspection - what data is sent?
--- ============================================
-local function inspectRemote()
-    print("\n[Test 4] REMOTE INSPECTION")
-    print("[Test 4] Remote name:", createLineRemote and createLineRemote.Name or "nil")
-    print("[Test 4] Remote class:", createLineRemote and createLineRemote.ClassName or "nil")
-    print("[Test 4] Remote parent:", createLineRemote and createLineRemote.Parent.Name or "nil")
-
-    -- Check for any siblings that might be interesting
-    if createLineRemote and createLineRemote.Parent then
-        print("[Test 4] Sibling remotes in _NetManaged:")
-        for _, child in ipairs(createLineRemote.Parent:GetChildren()) do
-            print("  - " .. child.Name .. " (" .. child.ClassName .. ")")
-        end
-    end
-end
-
--- ============================================
--- TEST 5: Different GUID patterns
--- ============================================
-local function testGUIDPatterns()
-    print("\n[Test 5] GUID PATTERN TEST")
-
-    -- Test with same GUID (might be rejected as duplicate?)
-    local sameGUID = generateGUID()
-    print("[Test 5] Testing with repeated GUID: " .. sameGUID)
-
-    for i = 1, 5 do
-        local layerID = getCurrentLayerID()
-        if layerID and createLineRemote then
-            createLineRemote:FireServer(
-                sameGUID, -- Same GUID each time
-                {
-                    layerID,
-                    {
-                        color = Color3.fromRGB(0, 255, 0),
-                        transparency = 0,
-                        thickness = 0.3
-                    },
-                    {Vector2.new(150 + i * 3, 0), Vector2.new(150 + i * 3 + 2, 0)}
-                }
-            )
-        end
-        task.wait(0.5)
-    end
-    print("[Test 5] Check if all 5 green lines appeared or just 1")
-end
-
--- ============================================
--- TEST 6: Points per line test
--- ============================================
-local function testPointsPerLine()
-    print("\n[Test 6] POINTS PER LINE TEST")
-    print("[Test 6] Testing if many points in one line bypasses rate limit...")
-
-    local layerID = getCurrentLayerID()
-    if not layerID or not createLineRemote then return end
-
-    -- Create one line with MANY points (essentially drawing multiple lines as one)
-    local points = {}
-    for i = 1, 100 do
-        table.insert(points, Vector2.new(200 + i * 0.5, math.sin(i / 5) * 5))
-    end
-
-    local startTime = tick()
+local startTime = tick()
+for i = 1, 20 do
     createLineRemote:FireServer(
         generateGUID(),
         {
             layerID,
             {
-                color = Color3.fromRGB(0, 0, 255),
+                color = Color3.fromRGB(255, 0, 0), -- Red
                 transparency = 0,
                 thickness = 0.3
             },
-            points
+            {
+                Vector2.new(BASE_X + 20 + i, BASE_Z),
+                Vector2.new(BASE_X + 20 + i + 0.5, BASE_Z + 2)
+            }
         }
     )
-    local elapsed = tick() - startTime
-
-    print("[Test 6] Sent 1 line with 100 points in " .. string.format("%.3f", elapsed) .. "s")
-    print("[Test 6] Check if the wavy blue line appeared!")
 end
+local elapsed = tick() - startTime
+
+print("[Test 2] Sent 20 lines in " .. string.format("%.3f", elapsed) .. "s")
+print("[Test 2] Look for RED LINES to the right of spiral")
+print("[Test 2] If you see 'too fast' message, rate limit kicked in around line 15-20")
+print("")
+
+task.wait(2)
 
 -- ============================================
--- TEST 7: Monitor InsertionHash changes
+-- TEST 3: Safe rate test
 -- ============================================
-local function monitorInsertionHash()
-    print("\n[Test 7] MONITORING InsertionHash...")
+print("[Test 3] SAFE RATE TEST - 10 lines with 0.5s delay")
 
-    -- Find InsertionHash
-    local insertionHash = nil
-    for _, child in ipairs(InsertService:GetChildren()) do
-        print("[Test 7] InsertService child:", child.Name, child.ClassName)
-        if child.Name == "InsertionHash" then
-            insertionHash = child
-        end
-    end
-
-    if not insertionHash then
-        print("[Test 7] InsertionHash not found in InsertService!")
-        print("[Test 7] Searching entire game...")
-
-        -- Search workspace
-        local found = workspace:FindFirstChild("InsertionHash", true)
-        if found then
-            print("[Test 7] Found in workspace:", found:GetFullName())
-            insertionHash = found
-        end
-    end
-
-    if insertionHash then
-        print("[Test 7] Found InsertionHash!")
-        print("[Test 7] Current value:", tostring(insertionHash.Value))
-        print("[Test 7] ClassName:", insertionHash.ClassName)
-
-        -- Monitor changes
-        insertionHash.Changed:Connect(function(newValue)
-            print("[Test 7] InsertionHash CHANGED to:", tostring(newValue))
-        end)
-
-        print("[Test 7] Now monitoring... draw some lines!")
-    else
-        print("[Test 7] Could not find InsertionHash anywhere")
-    end
-end
-
--- ============================================
--- TEST 8: Inspect player Trackers structure
--- ============================================
-local function inspectTrackers()
-    print("\n[Test 8] INSPECTING Player Trackers...")
-
-    local trackers = player:FindFirstChild("Trackers")
-    if not trackers then
-        print("[Test 8] No Trackers found on player!")
-        return
-    end
-
-    print("[Test 8] Trackers found!")
-    print("[Test 8] Trackers.Value:", tostring(trackers.Value))
-    print("[Test 8] Trackers children:")
-
-    for _, tracker in ipairs(trackers:GetChildren()) do
-        print("  - " .. tracker.Name .. " (" .. tracker.ClassName .. ")")
-        print("    Value:", tostring(tracker.Value))
-
-        -- Print attributes
-        local attrs = tracker:GetAttributes()
-        for attrName, attrValue in pairs(attrs) do
-            print("    Attr[" .. attrName .. "]:", tostring(attrValue))
-        end
-    end
-end
-
--- ============================================
--- TEST 9: Search for rate limit related code/values
--- ============================================
-local function searchForRateLimitClues()
-    print("\n[Test 9] SEARCHING for rate limit clues...")
-
-    -- Check ReplicatedStorage for any rate/limit/throttle related items
-    local keywords = {"rate", "limit", "throttle", "cooldown", "spam", "flood", "queue"}
-
-    local function searchIn(parent, depth)
-        if depth > 5 then return end
-        for _, child in ipairs(parent:GetChildren()) do
-            local nameLower = child.Name:lower()
-            for _, keyword in ipairs(keywords) do
-                if nameLower:find(keyword) then
-                    print("[Test 9] FOUND:", child:GetFullName())
-                end
-            end
-            searchIn(child, depth + 1)
-        end
-    end
-
-    print("[Test 9] Searching ReplicatedStorage...")
-    searchIn(ReplicatedStorage, 0)
-
-    print("[Test 9] Searching ReplicatedFirst...")
-    pcall(function()
-        searchIn(game:GetService("ReplicatedFirst"), 0)
-    end)
-
-    print("[Test 9] Searching StarterPlayer...")
-    pcall(function()
-        searchIn(game:GetService("StarterPlayer"), 0)
-    end)
-
-    print("[Test 9] Search complete!")
-end
-
--- ============================================
--- TEST 10: Decompile/inspect LocalScripts
--- ============================================
-local function findLocalScripts()
-    print("\n[Test 10] FINDING LocalScripts...")
-
-    local scripts = {}
-
-    local function searchScripts(parent, depth)
-        if depth > 10 then return end
-        for _, child in ipairs(parent:GetChildren()) do
-            if child:IsA("LocalScript") or child:IsA("ModuleScript") then
-                table.insert(scripts, child)
-                print("[Test 10] Found:", child:GetFullName())
-            end
-            pcall(function()
-                searchScripts(child, depth + 1)
-            end)
-        end
-    end
-
-    searchScripts(player.PlayerGui, 0)
-    searchScripts(player.PlayerScripts, 0)
-    pcall(function() searchScripts(game:GetService("ReplicatedFirst"), 0) end)
-
-    print("[Test 10] Found " .. #scripts .. " scripts")
-    print("[Test 10] Use decompile() in Dex on these to view source")
-
-    return scripts
-end
-
--- ============================================
--- TEST 11: Test if rate limit is per-layer
--- ============================================
-local function testPerLayerRateLimit()
-    print("\n[Test 11] TESTING if rate limit is per-layer...")
-    print("[Test 11] Theory: Maybe each layer has its own rate limit?")
-
-    -- Get all layer IDs
-    local trackers = player:FindFirstChild("Trackers")
-    if not trackers then
-        print("[Test 11] No trackers found!")
-        return
-    end
-
-    local layerIDs = {}
-    for _, tracker in ipairs(trackers:GetChildren()) do
-        local id = tracker:GetAttribute("id")
-        if id then
-            table.insert(layerIDs, id)
-            print("[Test 11] Found layer:", id)
-        end
-    end
-
-    if #layerIDs < 2 then
-        print("[Test 11] Need at least 2 layers to test! Create another layer first.")
-        return
-    end
-
-    print("[Test 11] Drawing 10 lines alternating between layers...")
-
-    for i = 1, 10 do
-        local layerID = layerIDs[(i % #layerIDs) + 1]
-
-        createLineRemote:FireServer(
-            generateGUID(),
-            {
-                layerID,
-                {
-                    color = Color3.fromRGB(255, 0, 0),
-                    transparency = 0,
-                    thickness = 0.3
-                },
-                {Vector2.new(i * 3, 50), Vector2.new(i * 3 + 2, 50)}
-            }
-        )
-        print("[Test 11] Line " .. i .. " on layer " .. layerID)
-    end
-
-    print("[Test 11] Done! Check if rate limit was avoided by alternating layers")
-end
-
--- ============================================
--- TEST 12: Extreme points test (the potential bypass)
--- ============================================
-local function testExtremePoints()
-    print("\n[Test 12] EXTREME POINTS TEST")
-    print("[Test 12] Drawing 1 line with 500 points...")
-
-    local layerID = getCurrentLayerID()
-    if not layerID then
-        print("[Test 12] No layer found!")
-        return
-    end
-
-    -- Create a complex path with 500 points
-    local points = {}
-    for i = 1, 500 do
-        local x = 250 + math.cos(i / 10) * (i / 20)
-        local z = math.sin(i / 10) * (i / 20)
-        table.insert(points, Vector2.new(x, z))
-    end
-
-    print("[Test 12] Sending line with " .. #points .. " points...")
-    local startTime = tick()
-
+for i = 1, 10 do
     createLineRemote:FireServer(
         generateGUID(),
         {
             layerID,
             {
-                color = Color3.fromRGB(255, 0, 255),
+                color = Color3.fromRGB(0, 255, 0), -- Green
                 transparency = 0,
-                thickness = 0.2
+                thickness = 0.3
             },
-            points
+            {
+                Vector2.new(BASE_X + 50 + i * 2, BASE_Z),
+                Vector2.new(BASE_X + 50 + i * 2, BASE_Z + 3)
+            }
         }
     )
-
-    local elapsed = tick() - startTime
-    print("[Test 12] Sent in " .. string.format("%.3f", elapsed) .. "s")
-    print("[Test 12] Check for a purple spiral pattern!")
-    print("[Test 12] If it appears, we can bypass rate limit with multi-point lines!")
+    print("[Test 3] Line " .. i .. " sent")
+    task.wait(0.5)
 end
 
+print("[Test 3] Look for GREEN LINES further right")
+print("[Test 3] These should all appear without rate limit")
+print("")
+
 -- ============================================
--- TEST 13: Find the configuration values
+-- TEST 4: Mega line test
 -- ============================================
-local function findRateLimitConfig()
-    print("\n[Test 13] FINDING RATE LIMIT CONFIGURATION...")
+print("[Test 4] MEGA LINE - 500 points in one line")
 
-    -- The config is likely in a "configuration" module
-    local configPath = ReplicatedStorage:FindFirstChild("packages")
-    if configPath then
-        configPath = configPath:FindFirstChild("_Index")
-        if configPath then
-            configPath = configPath:FindFirstChild("vorlias_net@2.1.4")
-            if configPath then
-                configPath = configPath:FindFirstChild("net")
-                if configPath then
-                    -- Look for configuration module
-                    local configModule = configPath:FindFirstChild("configuration")
-                    if configModule then
-                        print("[Test 13] Found configuration module!")
-                        print("[Test 13] Path:", configModule:GetFullName())
-
-                        -- Try to require it
-                        local success, config = pcall(function()
-                            return require(configModule)
-                        end)
-
-                        if success then
-                            print("[Test 13] Config loaded!")
-                            if config.GetConfiguration then
-                                -- Try to get the values
-                                pcall(function()
-                                    print("[Test 13] ServerThrottleMessage:", config.GetConfiguration("ServerThrottleMessage"))
-                                end)
-                                pcall(function()
-                                    print("[Test 13] ServerThrottleResetTimer:", config.GetConfiguration("ServerThrottleResetTimer"))
-                                end)
-                            end
-
-                            -- Print all keys
-                            for k, v in pairs(config) do
-                                print("[Test 13] Config key:", k, type(v))
-                            end
-                        else
-                            print("[Test 13] Failed to require:", config)
-                        end
-                    else
-                        print("[Test 13] No configuration module found")
-                        -- List all children
-                        print("[Test 13] Children of net:")
-                        for _, child in ipairs(configPath:GetChildren()) do
-                            print("  -", child.Name, child.ClassName)
-                        end
-                    end
-                end
-            end
-        end
-    end
+local megaPoints = {}
+for i = 1, 500 do
+    local x = BASE_X - 30 + (i % 50) * 0.5
+    local z = BASE_Z - 20 + math.floor(i / 50) * 2
+    table.insert(megaPoints, Vector2.new(x, z))
 end
 
--- ============================================
--- TEST 14: Precise burst limit finder
--- ============================================
-local function findExactLimit()
-    print("\n[Test 14] FINDING EXACT RATE LIMIT...")
-    print("[Test 14] Drawing lines with 0.5s delay until rate limited...")
+createLineRemote:FireServer(
+    generateGUID(),
+    {
+        layerID,
+        {
+            color = Color3.fromRGB(0, 255, 255), -- Cyan
+            transparency = 0,
+            thickness = 0.15
+        },
+        megaPoints
+    }
+)
 
-    local count = 0
-    local startTime = tick()
-
-    for i = 1, 100 do
-        local layerID = getCurrentLayerID()
-        if not layerID or not createLineRemote then break end
-
-        createLineRemote:FireServer(
-            generateGUID(),
-            {
-                layerID,
-                {
-                    color = Color3.fromRGB(255, 255, 0),
-                    transparency = 0,
-                    thickness = 0.2
-                },
-                {Vector2.new(-50 + i, -50), Vector2.new(-50 + i + 0.5, -50)}
-            }
-        )
-        count = count + 1
-
-        -- Check if we hit 60 seconds (reset window)
-        if tick() - startTime > 55 then
-            print("[Test 14] Approaching reset window, stopping at " .. count .. " lines")
-            break
-        end
-
-        task.wait(0.5)
-    end
-
-    local elapsed = tick() - startTime
-    print("[Test 14] Drew " .. count .. " lines in " .. string.format("%.1f", elapsed) .. "s")
-    print("[Test 14] If no rate limit hit, limit is > " .. count .. " per minute")
-end
+print("[Test 4] SENT! Look for CYAN zigzag pattern to the left")
+print("[Test 4] 500 points in 1 request = only 1 toward rate limit!")
+print("")
 
 -- ============================================
--- TEST 15: Merge lines strategy test
+-- RESULTS
 -- ============================================
-local function testMergeStrategy()
-    print("\n[Test 15] MERGE STRATEGY TEST")
-    print("[Test 15] Simulating 50 separate lines as 5 merged lines...")
-
-    local layerID = getCurrentLayerID()
-    if not layerID then
-        print("[Test 15] No layer!")
-        return
-    end
-
-    -- Instead of 50 lines, we create 5 lines with 10 "segments" each
-    -- Each segment is represented by points that create the illusion of separate lines
-
-    for batch = 1, 5 do
-        local points = {}
-
-        -- Create 10 "lines" worth of points in one line
-        -- We do this by jumping position (creates gaps visually but all one line)
-        for segment = 1, 10 do
-            local baseX = -100 + (batch - 1) * 30 + (segment - 1) * 3
-            local baseZ = -30
-
-            -- Add points for this segment
-            table.insert(points, Vector2.new(baseX, baseZ))
-            table.insert(points, Vector2.new(baseX + 2, baseZ))
-            -- Jump to next segment position (this creates visual gap)
-            if segment < 10 then
-                table.insert(points, Vector2.new(baseX + 3, baseZ))
-            end
-        end
-
-        createLineRemote:FireServer(
-            generateGUID(),
-            {
-                layerID,
-                {
-                    color = Color3.fromRGB(0, 255, 255),
-                    transparency = 0,
-                    thickness = 0.2
-                },
-                points
-            }
-        )
-
-        print("[Test 15] Batch " .. batch .. " sent (" .. #points .. " points)")
-        task.wait(0.1)
-    end
-
-    print("[Test 15] Done! 5 requests instead of 50")
-    print("[Test 15] Check for cyan lines - they might look connected though")
-end
-
--- ============================================
--- ANALYSIS: Rate Limit Mechanism
--- ============================================
---[[
-FOUND IN RateLimitMiddleware.lua:
-
-1. Rate limit is PER-PLAYER counting createLine CALLS (not points!)
-
-2. Check: if MaxRequestsPerMinute <= counter:Get(player) then BLOCK
-
-3. Reset: ServerThrottleResetTimer controls when counters clear
-
-4. BYPASS CONFIRMED:
-   - 1 line with 1000 points = 1 request
-   - 1000 lines with 2 points = 1000 requests = BLOCKED
-
-5. Strategy for cloning:
-   - Merge multiple lines into single multi-point lines where possible
-   - Lines with same color/thickness can be merged
-   - Trade-off: merged lines can't be individually undone in-game
-]]
-
--- ============================================
--- MENU
--- ============================================
-print("\n========================================")
-print("RATE LIMITER TESTING SCRIPT v3")
 print("========================================")
-print("Commands (run in executor):")
-print("")
-print("-- Basic Tests --")
-print("  testBurstLimit()       -- Test max lines/sec")
-print("  testSafeThreshold(0.1) -- Test with delay")
-print("  testRecoveryTime()     -- Test cooldown recovery")
-print("")
-print("-- Discovery --")
-print("  inspectRemote()        -- Inspect remote structure")
-print("  inspectTrackers()      -- View player layer data")
-print("  monitorInsertionHash() -- Watch for GUID tracking")
-print("  searchForRateLimitClues() -- Search for keywords")
-print("  findLocalScripts()     -- Find scripts to decompile")
-print("")
-print("-- Bypass Tests --")
-print("  testGUIDPatterns()     -- Test GUID behavior")
-print("  testPointsPerLine()    -- 100 points in 1 line")
-print("  testExtremePoints()    -- 500 points spiral")
-print("  testPerLayerRateLimit() -- Alternate layers")
-print("  testMergeStrategy()    -- 50 lines as 5 merged")
-print("")
-print("-- Config Discovery --")
-print("  findRateLimitConfig()  -- Find limit values")
-print("  findExactLimit()       -- Find exact MaxRequestsPerMinute")
+print("RESULTS SUMMARY")
 print("========================================")
+print("Look for these colors:")
+print("  PURPLE SPIRAL - Multi-point bypass test")
+print("  RED LINES     - Burst test (may be incomplete if rate limited)")
+print("  GREEN LINES   - Safe rate test (should be complete)")
+print("  CYAN ZIGZAG   - Mega 500-point line")
 print("")
-print("ANALYSIS: Rate limit counts createLine CALLS, not points!")
-print("BYPASS: Use multi-point lines to send more data per request")
-
--- Auto-run some discovery
-inspectRemote()
-inspectTrackers()
+print("CONCLUSION:")
+print("If purple spiral and cyan zigzag appear fully,")
+print("the BYPASS IS CONFIRMED - use multi-point lines!")
+print("========================================")
