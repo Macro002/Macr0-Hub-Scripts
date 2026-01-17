@@ -495,10 +495,188 @@ local function testExtremePoints()
 end
 
 -- ============================================
+-- TEST 13: Find the configuration values
+-- ============================================
+local function findRateLimitConfig()
+    print("\n[Test 13] FINDING RATE LIMIT CONFIGURATION...")
+
+    -- The config is likely in a "configuration" module
+    local configPath = ReplicatedStorage:FindFirstChild("packages")
+    if configPath then
+        configPath = configPath:FindFirstChild("_Index")
+        if configPath then
+            configPath = configPath:FindFirstChild("vorlias_net@2.1.4")
+            if configPath then
+                configPath = configPath:FindFirstChild("net")
+                if configPath then
+                    -- Look for configuration module
+                    local configModule = configPath:FindFirstChild("configuration")
+                    if configModule then
+                        print("[Test 13] Found configuration module!")
+                        print("[Test 13] Path:", configModule:GetFullName())
+
+                        -- Try to require it
+                        local success, config = pcall(function()
+                            return require(configModule)
+                        end)
+
+                        if success then
+                            print("[Test 13] Config loaded!")
+                            if config.GetConfiguration then
+                                -- Try to get the values
+                                pcall(function()
+                                    print("[Test 13] ServerThrottleMessage:", config.GetConfiguration("ServerThrottleMessage"))
+                                end)
+                                pcall(function()
+                                    print("[Test 13] ServerThrottleResetTimer:", config.GetConfiguration("ServerThrottleResetTimer"))
+                                end)
+                            end
+
+                            -- Print all keys
+                            for k, v in pairs(config) do
+                                print("[Test 13] Config key:", k, type(v))
+                            end
+                        else
+                            print("[Test 13] Failed to require:", config)
+                        end
+                    else
+                        print("[Test 13] No configuration module found")
+                        -- List all children
+                        print("[Test 13] Children of net:")
+                        for _, child in ipairs(configPath:GetChildren()) do
+                            print("  -", child.Name, child.ClassName)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ============================================
+-- TEST 14: Precise burst limit finder
+-- ============================================
+local function findExactLimit()
+    print("\n[Test 14] FINDING EXACT RATE LIMIT...")
+    print("[Test 14] Drawing lines with 0.5s delay until rate limited...")
+
+    local count = 0
+    local startTime = tick()
+
+    for i = 1, 100 do
+        local layerID = getCurrentLayerID()
+        if not layerID or not createLineRemote then break end
+
+        createLineRemote:FireServer(
+            generateGUID(),
+            {
+                layerID,
+                {
+                    color = Color3.fromRGB(255, 255, 0),
+                    transparency = 0,
+                    thickness = 0.2
+                },
+                {Vector2.new(-50 + i, -50), Vector2.new(-50 + i + 0.5, -50)}
+            }
+        )
+        count = count + 1
+
+        -- Check if we hit 60 seconds (reset window)
+        if tick() - startTime > 55 then
+            print("[Test 14] Approaching reset window, stopping at " .. count .. " lines")
+            break
+        end
+
+        task.wait(0.5)
+    end
+
+    local elapsed = tick() - startTime
+    print("[Test 14] Drew " .. count .. " lines in " .. string.format("%.1f", elapsed) .. "s")
+    print("[Test 14] If no rate limit hit, limit is > " .. count .. " per minute")
+end
+
+-- ============================================
+-- TEST 15: Merge lines strategy test
+-- ============================================
+local function testMergeStrategy()
+    print("\n[Test 15] MERGE STRATEGY TEST")
+    print("[Test 15] Simulating 50 separate lines as 5 merged lines...")
+
+    local layerID = getCurrentLayerID()
+    if not layerID then
+        print("[Test 15] No layer!")
+        return
+    end
+
+    -- Instead of 50 lines, we create 5 lines with 10 "segments" each
+    -- Each segment is represented by points that create the illusion of separate lines
+
+    for batch = 1, 5 do
+        local points = {}
+
+        -- Create 10 "lines" worth of points in one line
+        -- We do this by jumping position (creates gaps visually but all one line)
+        for segment = 1, 10 do
+            local baseX = -100 + (batch - 1) * 30 + (segment - 1) * 3
+            local baseZ = -30
+
+            -- Add points for this segment
+            table.insert(points, Vector2.new(baseX, baseZ))
+            table.insert(points, Vector2.new(baseX + 2, baseZ))
+            -- Jump to next segment position (this creates visual gap)
+            if segment < 10 then
+                table.insert(points, Vector2.new(baseX + 3, baseZ))
+            end
+        end
+
+        createLineRemote:FireServer(
+            generateGUID(),
+            {
+                layerID,
+                {
+                    color = Color3.fromRGB(0, 255, 255),
+                    transparency = 0,
+                    thickness = 0.2
+                },
+                points
+            }
+        )
+
+        print("[Test 15] Batch " .. batch .. " sent (" .. #points .. " points)")
+        task.wait(0.1)
+    end
+
+    print("[Test 15] Done! 5 requests instead of 50")
+    print("[Test 15] Check for cyan lines - they might look connected though")
+end
+
+-- ============================================
+-- ANALYSIS: Rate Limit Mechanism
+-- ============================================
+--[[
+FOUND IN RateLimitMiddleware.lua:
+
+1. Rate limit is PER-PLAYER counting createLine CALLS (not points!)
+
+2. Check: if MaxRequestsPerMinute <= counter:Get(player) then BLOCK
+
+3. Reset: ServerThrottleResetTimer controls when counters clear
+
+4. BYPASS CONFIRMED:
+   - 1 line with 1000 points = 1 request
+   - 1000 lines with 2 points = 1000 requests = BLOCKED
+
+5. Strategy for cloning:
+   - Merge multiple lines into single multi-point lines where possible
+   - Lines with same color/thickness can be merged
+   - Trade-off: merged lines can't be individually undone in-game
+]]
+
+-- ============================================
 -- MENU
 -- ============================================
 print("\n========================================")
-print("RATE LIMITER TESTING SCRIPT v2")
+print("RATE LIMITER TESTING SCRIPT v3")
 print("========================================")
 print("Commands (run in executor):")
 print("")
@@ -519,7 +697,15 @@ print("  testGUIDPatterns()     -- Test GUID behavior")
 print("  testPointsPerLine()    -- 100 points in 1 line")
 print("  testExtremePoints()    -- 500 points spiral")
 print("  testPerLayerRateLimit() -- Alternate layers")
+print("  testMergeStrategy()    -- 50 lines as 5 merged")
+print("")
+print("-- Config Discovery --")
+print("  findRateLimitConfig()  -- Find limit values")
+print("  findExactLimit()       -- Find exact MaxRequestsPerMinute")
 print("========================================")
+print("")
+print("ANALYSIS: Rate limit counts createLine CALLS, not points!")
+print("BYPASS: Use multi-point lines to send more data per request")
 
 -- Auto-run some discovery
 inspectRemote()
